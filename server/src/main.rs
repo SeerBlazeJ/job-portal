@@ -1,17 +1,18 @@
 use axum::{
+    Extension, Json, Router,
     extract::{Request, State},
     http::StatusCode,
     middleware::{self, Next},
     response::Response,
     routing::{get, post},
-    serve, Extension, Json, Router,
+    serve,
 };
-use bcrypt::{hash, verify, DEFAULT_COST};
+use bcrypt::{DEFAULT_COST, hash, verify};
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use surrealdb::engine::local::Db;
-use surrealdb::{engine::local::RocksDb, Surreal};
+use surrealdb::{RecordId, Surreal, engine::local::RocksDb};
 
 #[derive(Deserialize)]
 struct SignupData {
@@ -31,9 +32,9 @@ struct Claims {
     iat: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct User {
-    id: Option<String>,
+    id: Option<RecordId>,
     uid: String,
     pword_hash: String,
 }
@@ -44,13 +45,21 @@ async fn main() {
         .await
         .expect("Failed to make a connection with the database");
     db.use_ns("main").use_db("main").await.unwrap();
-    let app = Router::new()
-        //Public Routes
+
+    // Public routes (no auth required)
+    let public_routes = Router::new()
         .route("/signup", post(signup))
-        .route("/signin", post(signin))
-        //Private Routes
+        .route("/signin", post(signin));
+
+    // Protected routes (auth required)
+    let protected_routes = Router::new()
         .route("/profile", get(get_profile))
-        .route_layer(middleware::from_fn(auth_middleware))
+        .route_layer(middleware::from_fn(auth_middleware));
+
+    // Combine them
+    let app = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .with_state(db);
 
     let listener = tokio::net::TcpListener::bind("localhost:3000")
@@ -64,7 +73,7 @@ async fn get_profile(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<UserProfile>, StatusCode> {
     let users: Vec<User> = db
-        .query("SELECT * FROM Users WHERE uid = $uid")
+        .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", claims.uid.clone()))
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
@@ -73,7 +82,7 @@ async fn get_profile(
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
     let id = user.id.clone().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(UserProfile {
-        id,
+        id: id.to_string(),
         uid: user.uid.clone(),
     }))
 }
@@ -105,13 +114,14 @@ async fn signup(
     Json(data): Json<SignupData>,
 ) -> Result<Json<String>, StatusCode> {
     let password_hash = hash_pword(&data.pword).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let user = User {
+        id: None,
+        uid: data.uid,
+        pword_hash: password_hash,
+    };
     let _: Option<User> = db
-        .create("Users")
-        .content(User {
-            id: None,
-            uid: data.uid,
-            pword_hash: password_hash,
-        })
+        .create("User")
+        .content(user)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json("User created".to_string()))
@@ -122,7 +132,7 @@ async fn signin(
     Json(data): Json<SignupData>,
 ) -> Result<Json<String>, StatusCode> {
     let user_details_vec: Vec<User> = db
-        .query("SELECT * FROM Users where uid=$uid")
+        .query("SELECT * FROM User where uid=$uid")
         .bind(("uid", data.uid.clone()))
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
