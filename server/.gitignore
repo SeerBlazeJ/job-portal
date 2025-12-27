@@ -1,3 +1,4 @@
-Job_portal/
+Job_Portal/
+/Job_Portal
 target/
 cargo.lock
