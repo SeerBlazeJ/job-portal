@@ -2,3 +2,4 @@ Job_Portal/
 /Job_Portal
 target/
 cargo.lock
+Cargo.lock
