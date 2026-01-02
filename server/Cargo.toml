@@ -1,5 +1,5 @@
 [package]
-name = "server"
+name = "Job Portal"
 version = "0.2.0"
 edition = "2024"
 
