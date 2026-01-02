@@ -1917,6 +1917,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
+name = "job_portal"
+version = "0.2.0"
+dependencies = [
+ "axum",
+ "bcrypt 0.17.1",
+ "chrono",
+ "jsonwebtoken",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tokio",
+ "tower",
+ "tower-http",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3463,22 +3479,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
-]
-
-[[package]]
-name = "server"
-version = "0.2.0"
-dependencies = [
- "axum",
- "bcrypt 0.17.1",
- "chrono",
- "jsonwebtoken",
- "serde",
- "serde_json",
- "surrealdb",
- "tokio",
- "tower",
- "tower-http",
 ]
 
 [[package]]
