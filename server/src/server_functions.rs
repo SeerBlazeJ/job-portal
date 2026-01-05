@@ -84,6 +84,149 @@ pub async fn signin(
     }
 }
 
+pub async fn get_jobs(
+    State(db): State<Surreal<Db>>,
+    Json(uid): Json<String>,
+) -> Result<Json<Vec<JobsData>>, StatusCode> {
+    let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(uid, &db).await?;
+
+    let jobs: Vec<Job> = match (skills_vec, edu_info_vec) {
+        // Case 1: Both skills and education info are None - return random jobs
+        (None, None) => db
+            .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 15")
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .take(0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+
+        // Case 2: Only skills exist - filter by skills
+        (Some(skills), None) => db
+            .query(
+                "SELECT * FROM jobs
+                 WHERE is_active = true
+                 AND skills_required CONTAINSANY $skills
+                 ORDER BY rand() LIMIT 15",
+            )
+            .bind(("skills", skills))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .take(0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+
+        // Case 3: Only education info exists - filter by education
+        (None, Some(edu_info)) => {
+            let mut all_jobs = Vec::new();
+
+            for (edu_level, major) in edu_info {
+                let jobs: Vec<Job> = db
+                    .query(
+                        "SELECT * FROM jobs
+                     WHERE is_active = true
+                     AND min_ed_lvl <= $edu_level
+                     AND $major INSIDE majors_accepted
+                     ORDER BY rand() LIMIT 15",
+                    )
+                    .bind(("edu_level", edu_level as i32))
+                    .bind(("major", major))
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .take(0)
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                all_jobs.extend(jobs);
+            }
+
+            // Shuffle and limit to 15
+            use rand::seq::SliceRandom;
+            let mut rng = rand::rng();
+            all_jobs.shuffle(&mut rng);
+            all_jobs.truncate(15);
+            all_jobs
+        }
+
+        // Case 4: Both skills and education info exist - filter by both
+        (Some(skills), Some(edu_info)) => {
+            let mut all_jobs = Vec::new();
+
+            for (edu_level, major) in edu_info {
+                let jobs: Vec<Job> = db
+                    .query(
+                        "SELECT * FROM jobs
+                     WHERE is_active = true
+                     AND skills_required CONTAINSANY $skills
+                     AND min_ed_lvl <= $edu_level
+                     AND $major INSIDE majors_accepted
+                     ORDER BY rand() LIMIT 15",
+                    )
+                    .bind(("skills", skills.clone()))
+                    .bind(("edu_level", edu_level as i32))
+                    .bind(("major", major))
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .take(0)
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                all_jobs.extend(jobs);
+            }
+
+            // Shuffle and limit to 15
+            use rand::seq::SliceRandom;
+            let mut rng = rand::rng();
+            all_jobs.shuffle(&mut rng);
+            all_jobs.truncate(15);
+            all_jobs
+        }
+    };
+
+    let database = db.clone();
+    let futures = jobs.into_iter().map(|j| {
+        let db = database.clone();
+        async move {
+            // Convert to owned Strings to avoid lifetime issues
+            let employer_id_str = j.employer_id.to_string();
+            let (table, key) = employer_id_str
+                .split_once(':')
+                .map(|(t, k)| (t.to_string(), k.to_string()))
+                .unwrap_or_else(|| ("Tasks".to_string(), employer_id_str.clone()));
+
+            let mut result = db
+                .query("SELECT VALUE name FROM type::thing($table, $key)")
+                .bind(("table", table))
+                .bind(("key", key))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let name: Option<String> = result
+                .take(0)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            Ok::<JobsData, StatusCode>(JobsData {
+                id: j.id.unwrap().to_string(),
+                employer_name: name.unwrap_or_default(),
+                title: j.title,
+                description: j.description,
+                skills_required: j.skills_required,
+                majors_accepted: j.majors_accepted,
+                location: j.location,
+                is_active: j.is_active,
+                salary_range_start: j.salary_range_start,
+                salary_range_end: j.salary_range_end,
+                datetime_created: j.datetime_created,
+                datetime_due: j.datetime_due,
+                min_ed_lvl: j.min_ed_lvl,
+            })
+        }
+    });
+
+    // Await all futures concurrently
+    let results = futures::future::join_all(futures).await;
+
+    // Collect successful results
+    let jobs_data: Vec<JobsData> = results.into_iter().filter_map(|r| r.ok()).collect();
+
+    Ok(Json(jobs_data))
+}
+
 pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let auth_header = req
         .headers()
