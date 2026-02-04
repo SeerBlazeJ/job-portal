@@ -91,7 +91,6 @@ pub async fn get_jobs(
     let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(uid, &db).await?;
 
     let jobs: Vec<Job> = match (skills_vec, edu_info_vec) {
-        // Case 1: Both skills and education info are None - return random jobs
         (None, None) => db
             .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 15")
             .await
