@@ -34,6 +34,7 @@ async fn main() {
     // Protected routes (auth required)
     let protected_routes = Router::new()
         .route("/profile", get(get_profile))
+        .route("/update-profile", post(update_profile))
         .route("/get-jobs", post(get_jobs))
         .route("/create-job", post(create_job))
         .route_layer(middleware::from_fn(auth_middleware));

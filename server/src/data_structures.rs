@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use surrealdb::RecordId;
@@ -11,6 +13,34 @@ pub enum EduLevel {
     Bachelors = 3,
     Masters = 4,
     PhD = 5,
+}
+impl FromStr for EduLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SecondarySchool" => Ok(EduLevel::SecondarySchool),
+            "HighSchool" => Ok(EduLevel::HighSchool),
+            "Diploma" => Ok(EduLevel::Diploma),
+            "Bachelors" => Ok(EduLevel::Bachelors),
+            "Masters" => Ok(EduLevel::Masters),
+            "PhD" => Ok(EduLevel::PhD),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for EduLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EduLevel::SecondarySchool => write!(f, "SecondarySchool"),
+            EduLevel::HighSchool => write!(f, "HighSchool"),
+            EduLevel::Diploma => write!(f, "Diploma"),
+            EduLevel::Bachelors => write!(f, "Bachelors"),
+            EduLevel::Masters => write!(f, "Masters"),
+            EduLevel::PhD => write!(f, "PhD"),
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -47,6 +77,17 @@ pub struct UserProfile {
     pub email: String,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateProfileRequest {
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub is_finding_job: Option<bool>,
+    pub skills: Option<Vec<String>>,
+    pub education: Option<Vec<Education>>,
+    pub current_work: Option<Work>,
+    pub previous_experience: Option<Vec<Work>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

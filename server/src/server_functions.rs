@@ -89,7 +89,7 @@ pub async fn signin(
 
 pub async fn get_jobs(
     State(db): State<Surreal<Db>>,
-    Extension(claims): Extension<Claims>, // ✅ Use claims from middleware, not body
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<JobsData>>, StatusCode> {
     // Use the uid from the validated token
     let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(claims.uid, &db).await?;
@@ -288,4 +288,91 @@ pub async fn create_job(
         Some(job) => Ok(Json(format!("Job post created with ID: {:?}", job.id))),
         None => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
+}
+
+pub async fn update_profile(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<UpdateProfileRequest>,
+) -> Result<Json<UserProfile>, StatusCode> {
+    // First, get the current user
+    let users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", claims.uid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let current_user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+    let user_id = current_user
+        .id
+        .clone()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut updates = Vec::new();
+
+    if let Some(name) = &data.name {
+        updates.push(format!("name = '{}'", name.replace("'", "''")));
+    }
+    if let Some(email) = &data.email {
+        updates.push(format!("email = '{}'", email.replace("'", "''")));
+    }
+    if let Some(is_finding_job) = data.is_finding_job {
+        updates.push(format!("is_finding_job = {}", is_finding_job));
+    }
+    if let Some(skills) = &data.skills {
+        let skills_json =
+            serde_json::to_string(skills).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        updates.push(format!("skills = {}", skills_json));
+    }
+    if let Some(education) = &data.education {
+        let edu_json =
+            serde_json::to_string(education).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        updates.push(format!("education = {}", edu_json));
+    }
+    if let Some(current_work) = &data.current_work {
+        let work_json =
+            serde_json::to_string(current_work).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        updates.push(format!("current_work = {}", work_json));
+    }
+    if let Some(previous_experience) = &data.previous_experience {
+        let exp_json = serde_json::to_string(previous_experience)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        updates.push(format!("previous_experience = {}", exp_json));
+    }
+
+    if updates.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let update_query = format!("UPDATE {} SET {}", user_id, updates.join(", "));
+
+    let _: Option<User> = db
+        .query(&update_query)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let updated_users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", claims.uid))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let updated_user = updated_users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
+    let id = updated_user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(UserProfile {
+        id: id.to_string(),
+        uid: updated_user.uid,
+        name: updated_user.name,
+        email: updated_user.email,
+        is_finding_job: updated_user.is_finding_job,
+        education: updated_user.education,
+        skills: updated_user.skills,
+    }))
 }

@@ -225,6 +225,7 @@ $jobs = $jobsResult['success'] ? $jobsResult['data'] : [];
         <h1>🎯 Job Portal Dashboard</h1>
             <div class="user-info">
             <span class="username">Welcome, <?php echo htmlspecialchars($userName); ?>!</span>
+            <a href="profile.php" class="btn-create-job">👤 Profile</a>
             <a href="create_job.php" class="btn-create-job">+ Create Job</a>
             <form action="logout.php" method="POST" style="margin: 0;">
                 <button type="submit" class="logout-btn">Logout</button>
