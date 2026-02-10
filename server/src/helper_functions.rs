@@ -34,20 +34,24 @@ pub async fn get_skills_eduinfo_from_uid(
     uid: String,
     db: &Surreal<Db>,
 ) -> Result<(Option<Vec<String>>, Option<Vec<(EduLevel, String)>>), StatusCode> {
-    let (table, key) = uid.split_once(':').unwrap_or(("User", uid.as_str()));
-    let user: User = db
-        .select((table, key))
+    let users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", uid))
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    if user.education.is_none() {
-        return Ok((user.skills, None));
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+
+    if user.education.as_deref().is_none_or(|e| e.is_empty()) {
+        return Ok((user.skills.clone(), None));
     }
+
     let mut edu_info: Vec<(EduLevel, String)> = Vec::new();
-    let _ = user
-        .education
-        .unwrap()
-        .into_iter()
-        .map(|e| edu_info.push((e.education, e.major)));
-    Ok((user.skills, Some(edu_info)))
+    for e in user.education.as_ref().unwrap() {
+        edu_info.push((e.education.clone(), e.major.clone()));
+    }
+
+    Ok((user.skills.clone(), Some(edu_info)))
 }

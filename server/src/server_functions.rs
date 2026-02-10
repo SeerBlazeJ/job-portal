@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -5,6 +7,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use chrono::NaiveDateTime;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use surrealdb::Surreal;
 use surrealdb::engine::local::Db;
@@ -86,9 +89,10 @@ pub async fn signin(
 
 pub async fn get_jobs(
     State(db): State<Surreal<Db>>,
-    Json(uid): Json<String>,
+    Extension(claims): Extension<Claims>, // ✅ Use claims from middleware, not body
 ) -> Result<Json<Vec<JobsData>>, StatusCode> {
-    let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(uid, &db).await?;
+    // Use the uid from the validated token
+    let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(claims.uid, &db).await?;
 
     let jobs: Vec<Job> = match (skills_vec, edu_info_vec) {
         (None, None) => db
@@ -168,7 +172,6 @@ pub async fn get_jobs(
                 all_jobs.extend(jobs);
             }
 
-            // Shuffle and limit to 15
             use rand::seq::SliceRandom;
             let mut rng = rand::rng();
             all_jobs.shuffle(&mut rng);
@@ -181,12 +184,11 @@ pub async fn get_jobs(
     let futures = jobs.into_iter().map(|j| {
         let db = database.clone();
         async move {
-            // Convert to owned Strings to avoid lifetime issues
             let employer_id_str = j.employer_id.to_string();
             let (table, key) = employer_id_str
                 .split_once(':')
                 .map(|(t, k)| (t.to_string(), k.to_string()))
-                .unwrap_or_else(|| ("Tasks".to_string(), employer_id_str.clone()));
+                .unwrap_or_else(|| ("User".to_string(), employer_id_str.clone()));
 
             let mut result = db
                 .query("SELECT VALUE name FROM type::thing($table, $key)")
@@ -217,10 +219,7 @@ pub async fn get_jobs(
         }
     });
 
-    // Await all futures concurrently
     let results = futures::future::join_all(futures).await;
-
-    // Collect successful results
     let jobs_data: Vec<JobsData> = results.into_iter().filter_map(|r| r.ok()).collect();
 
     Ok(Json(jobs_data))
@@ -243,4 +242,50 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     .map_err(|_| StatusCode::UNAUTHORIZED)?;
     req.extensions_mut().insert(claims.claims);
     Ok(next.run(req).await)
+}
+
+pub async fn create_job(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<CreateJobRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", claims.uid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+    let employer_id = user.id.clone().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let datetime_due: Option<NaiveDateTime> =
+        NaiveDateTime::from_str(data.datetime_due.as_str()).ok();
+    let job: Job = Job {
+        id: None,
+        employer_id,
+        title: data.title,
+        description: data.description,
+        skills_required: data.skills_required.unwrap_or_default(),
+        majors_accepted: data.majors_accepted.unwrap_or_default(),
+        location: data.location,
+        is_active: true,
+        salary_range_start: data.salary_range_start.unwrap_or_default(),
+        salary_range_end: data.salary_range_end.unwrap_or_default(),
+        datetime_created: NaiveDateTime::from_str(chrono::Utc::now().to_rfc3339().as_str())
+            .unwrap_or(NaiveDateTime::default()),
+        datetime_due,
+        min_ed_lvl: data.min_ed_lvl,
+    };
+
+    let created: Option<Job> = db
+        .create("jobs")
+        .content(job)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    match created {
+        Some(job) => Ok(Json(format!("Job post created with ID: {:?}", job.id))),
+        None => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }

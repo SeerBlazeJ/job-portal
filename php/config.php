@@ -5,10 +5,22 @@ session_start();
 // Rust server configuration
 define('RUST_API_URL', 'http://localhost:3000');
 define('JWT_COOKIE_NAME', 'job_portal_token');
-define('COOKIE_EXPIRY', 86400); // 24 hours (matching JWT expiration)
-
-// Enable secure cookies in production
+define('COOKIE_EXPIRY', 86400); // 24 hours
 define('SECURE_COOKIE', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on');
+
+// Cookie policy: Lax is usually safer during development than Strict.
+define('JWT_SAMESITE', 'Lax');
+
+// Helper: cookie options (PHP 7.3+)
+function jwtCookieOptions(int $expires): array {
+    return [
+        'expires' => $expires,
+        'path' => '/',
+        'secure' => SECURE_COOKIE,
+        'httponly' => true,
+        'samesite' => JWT_SAMESITE,
+    ];
+}
 
 // Helper function to make API calls to Rust server
 function callRustAPI($endpoint, $method = 'GET', $data = null, $token = null) {
@@ -19,12 +31,11 @@ function callRustAPI($endpoint, $method = 'GET', $data = null, $token = null) {
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
     $headers = ['Content-Type: application/json'];
-
     if ($token) {
         $headers[] = 'Authorization: Bearer ' . $token;
     }
 
-    if ($data && ($method === 'POST' || $method === 'PUT')) {
+    if ($data !== null && ($method === 'POST' || $method === 'PUT')) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     }
 
@@ -41,17 +52,25 @@ function callRustAPI($endpoint, $method = 'GET', $data = null, $token = null) {
             'success' => false,
             'status' => 500,
             'message' => 'Server connection failed',
-            'data' => null
+            'data' => null,
+            'raw' => null,
         ];
     }
 
     $responseData = json_decode($response, true);
 
+    // Prefer backend-provided message if present
+    $msg = getMessageFromStatus($httpCode);
+    if (is_array($responseData) && isset($responseData['message']) && is_string($responseData['message'])) {
+        $msg = $responseData['message'];
+    }
+
     return [
         'success' => $httpCode >= 200 && $httpCode < 300,
         'status' => $httpCode,
-        'message' => getMessageFromStatus($httpCode),
-        'data' => $responseData
+        'message' => $msg,
+        'data' => $responseData,
+        'raw' => $response,
     ];
 }
 
@@ -73,26 +92,19 @@ function getMessageFromStatus($httpCode) {
 
 // Store JWT in secure cookie
 function setJWTCookie($token) {
-    setcookie(
-        JWT_COOKIE_NAME,
-        $token,
-        [
-            'expires' => time() + COOKIE_EXPIRY,
-            'path' => '/',
-            'secure' => SECURE_COOKIE,
-            'httponly' => true,
-            'samesite' => 'Strict'
-        ]
-    );
+    // Keep session copy (optional; useful if cookies are blocked)
     $_SESSION['jwt_token'] = $token;
+
+    // Must be sent before any output
+    setcookie(JWT_COOKIE_NAME, $token, jwtCookieOptions(time() + COOKIE_EXPIRY));
 }
 
 // Get JWT from cookie or session
 function getJWTToken() {
-    if (isset($_COOKIE[JWT_COOKIE_NAME])) {
+    if (!empty($_COOKIE[JWT_COOKIE_NAME])) {
         return $_COOKIE[JWT_COOKIE_NAME];
     }
-    if (isset($_SESSION['jwt_token'])) {
+    if (!empty($_SESSION['jwt_token'])) {
         return $_SESSION['jwt_token'];
     }
     return null;
@@ -100,26 +112,21 @@ function getJWTToken() {
 
 // Clear JWT cookie and session
 function clearJWTCookie() {
-    setcookie(JWT_COOKIE_NAME, '', time() - 3600, '/', '', SECURE_COOKIE, true);
     unset($_SESSION['jwt_token']);
+    // Expire cookie using the same attributes as setJWTCookie()
+    setcookie(JWT_COOKIE_NAME, '', jwtCookieOptions(time() - 3600));
 }
 
 // Check if user is authenticated
 function isAuthenticated() {
     $token = getJWTToken();
-    if (!$token) {
-        return false;
-    }
+    if (!$token) return false;
 
     // Verify token with Rust backend by calling /profile
     $result = callRustAPI('/profile', 'GET', null, $token);
 
-    if ($result['success']) {
-        return true;
-    }
+    if ($result['success']) return true;
 
-    // Token invalid, clear it
     clearJWTCookie();
     return false;
 }
-?>

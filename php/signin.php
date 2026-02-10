@@ -1,804 +1,173 @@
 <?php
-// signin.php (merged)
+// signin.php
 require_once 'config.php';
 
-// If already authenticated, redirect to dashboard
 if (isAuthenticated()) {
     header('Location: dashboard.php');
     exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>JobPortal - Access</title>
-
-    <link href="https://fonts.googleapis.com" rel="preconnect" />
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0"
-        rel="stylesheet" />
-
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "accent-blue": "#007AFF",
-                        "accent-cyan": "#5AC8FA",
-                        "accent-purple": "#AF52DE",
-                        "glass-light": "rgba(255, 255, 255, 0.08)",
-                    },
-                    fontFamily: {
-                        "sans": ["Inter", "system-ui", "-apple-system", "sans-serif"],
-                        "display": ["Plus Jakarta Sans", "system-ui", "-apple-system", "sans-serif"],
-                    },
-                    boxShadow: {
-                        'glass': '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-                    },
-                },
-            },
-        }
-    </script>
-
-    <style>
-        body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #0A0A0C 100%);
-            color: #ffffff;
-            overflow-x: hidden;
-            user-select: none;
-        }
-
-        .noise-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-            opacity: 0.02;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
-
-        #background-objects {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .bg-orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.4;
-            animation: float-orb 20s infinite ease-in-out alternate;
-        }
-
-        .bg-orb-1 {
-            top: -10%;
-            right: -5%;
-            width: 600px;
-            height: 600px;
-            background: linear-gradient(45deg, #007AFF, #5AC8FA);
-            animation-duration: 25s;
-        }
-
-        .bg-orb-2 {
-            bottom: -15%;
-            left: -10%;
-            width: 700px;
-            height: 700px;
-            background: linear-gradient(45deg, #AF52DE, #FF2D55);
-            animation-duration: 30s;
-        }
-
-        .bg-orb-3 {
-            top: 40%;
-            left: 30%;
-            width: 300px;
-            height: 300px;
-            background: rgba(90, 200, 250, 0.5);
-            filter: blur(80px);
-            animation-duration: 18s;
-        }
-
-        @keyframes float-orb {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(50px, 50px) rotate(10deg); }
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(80px) saturate(200%);
-            -webkit-backdrop-filter: blur(80px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 32px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-        }
-
-        .segmented-control-container {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 4px;
-            border-radius: 14px;
-            position: relative;
-            display: flex;
-            overflow: visible;
-            z-index: 20;
-            cursor: pointer;
-            touch-action: none;
-        }
-
-        .segmented-control-container:active { cursor: grabbing; }
-
-        #tab-glider {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            width: calc(50% - 4px);
-            height: calc(100% - 8px);
-            border-radius: 10px;
-            z-index: 0;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: saturate(300%) blur(20px);
-            -webkit-backdrop-filter: saturate(300%) blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 8px 25px rgba(0, 0, 0, 0.3);
-            transform-origin: center center;
-            pointer-events: none;
-            transform: translateX(0) scale(1);
-        }
-
-        .tab-btn {
-            flex: 1;
-            position: relative;
-            z-index: 2;
-            padding: 10px 0;
-            text-align: center;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #9CA3AF;
-            transition: color 0.3s ease;
-            background: transparent;
-            border: none;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .tab-btn.active {
-            color: #FFFFFF;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-
-        .input-group-wrapper { position: relative; transition: all 0.3s ease; }
-
-        .glass-input {
-            background-color: rgba(0, 0, 0, 0.2) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #ffffff !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .glass-input:focus {
-            background-color: rgba(0, 10, 25, 0.6) !important;
-            border-color: #5AC8FA !important;
-            box-shadow:
-                inset 0 2px 4px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(90, 200, 250, 0.3),
-                0 0 15px rgba(0, 122, 255, 0.25) !important;
-            transform: translateY(-1px);
-            outline: none;
-        }
-
-        .glass-input::placeholder { color: rgba(255, 255, 255, 0.3) !important; }
-
-        .glass-input:-webkit-autofill,
-        .glass-input:-webkit-autofill:hover,
-        .glass-input:-webkit-autofill:focus,
-        .glass-input:-webkit-autofill:active {
-            -webkit-text-fill-color: white !important;
-            -webkit-box-shadow: 0 0 0px 1000px rgba(10, 10, 12, 0.9) inset !important;
-            transition: background-color 5000s ease-in-out 0s;
-            caret-color: white;
-        }
-
-        .input-group-wrapper:focus-within .input-icon {
-            color: #5AC8FA !important;
-            text-shadow: 0 0 10px rgba(90, 200, 250, 0.6);
-            transform: scale(1.1);
-        }
-
-        .input-icon { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
-
-        .text-gradient-main {
-            background: linear-gradient(180deg, #FFFFFF 0%, #E5E5EA 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .text-gradient-accent {
-            background: linear-gradient(135deg, #5AC8FA 0%, #007AFF 50%, #5856D6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .btn-glass-primary {
-            background: linear-gradient(180deg, rgba(90, 200, 250, 0.9) 0%, rgba(0, 122, 255, 0.9) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .btn-glass-primary:hover {
-            background: linear-gradient(180deg, rgba(90, 200, 250, 1) 0%, rgba(0, 122, 255, 1) 100%);
-            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .btn-glass-primary:active { transform: translateY(0); }
-        .btn-glass-primary:disabled { opacity: 0.7; transform: none; cursor: not-allowed; }
-
-        .animate-height {
-            transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), margin-top 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            overflow: hidden;
-        }
-
-        .fade-text { transition: opacity 0.3s ease-in-out; }
-
-        @keyframes slideInDown {
-            from { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
-            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        }
-
-        #toast-container {
-            position: fixed;
-            top: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-        }
-
-        .toast {
-            pointer-events: auto;
-            background: rgba(25, 25, 28, 0.9);
-            backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 14px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            animation: slideInDown 0.3s forwards;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-5px); }
-            40%, 80% { transform: translateX(5px); }
-        }
-
-        .shake-input {
-            animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
-            border-color: rgba(255, 50, 50, 0.6) !important;
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.2) !important;
-        }
-
-        .gradient-accent-top {
-            background: radial-gradient(ellipse at top, rgba(90, 200, 250, 0.08) 0%, transparent 70%);
-        }
-
-        .gradient-accent-bottom {
-            background: radial-gradient(ellipse at bottom, rgba(175, 82, 222, 0.05) 0%, transparent 70%);
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign in - Job Portal</title>
+  <style>
+    body { font-family: system-ui, Arial; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; margin:0; padding:20px; }
+    .wrap { max-width: 520px; margin: 40px auto; }
+    .card { background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.15); padding:24px; }
+    h1 { margin:0 0 8px; color:#333; font-size:24px; }
+    .muted { color:#666; margin:0 0 16px; }
+    .tabs { display:flex; gap:10px; margin: 16px 0 20px; }
+    .tab { flex:1; padding:10px; border-radius:8px; border:1px solid #ddd; background:#f7f7f7; cursor:pointer; font-weight:600; }
+    .tab.active { background:#667eea; color:#fff; border-color:#667eea; }
+    label { display:block; font-size:13px; color:#333; margin: 12px 0 6px; font-weight:600; }
+    input { width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; font-size:14px; }
+    button { width:100%; margin-top:16px; padding:12px; border:0; border-radius:8px; background:#667eea; color:#fff; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.7; cursor:not-allowed; }
+    .alert { margin: 14px 0 0; padding: 12px; border-radius: 8px; display:none; white-space: pre-wrap; }
+    .alert.show { display:block; }
+    .alert.error { background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; }
+    .alert.success { background:#d4edda; border:1px solid #c3e6cb; color:#155724; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex: 1; }
+  </style>
 </head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Job Portal</h1>
+      <p class="muted">Login or create a new account.</p>
 
-<body class="antialiased min-h-screen flex items-center justify-center p-4 relative selection:bg-blue-500/30">
-    <div class="noise-overlay"></div>
-    <div id="background-objects">
-        <div class="bg-orb bg-orb-1"></div>
-        <div class="bg-orb bg-orb-2"></div>
-        <div class="bg-orb bg-orb-3"></div>
+      <div class="tabs">
+        <button class="tab active" id="tabLogin" type="button">Login</button>
+        <button class="tab" id="tabSignup" type="button">Signup</button>
+      </div>
+
+      <div id="alert" class="alert"></div>
+
+      <form id="authForm">
+        <input type="hidden" name="mode" id="mode" value="login" />
+
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required />
+
+        <div id="emailBox" style="display:none;">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" />
+        </div>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+
+        <div id="confirmBox" style="display:none;">
+          <label for="confirm_password">Confirm password</label>
+          <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" />
+        </div>
+
+        <button id="submitBtn" type="submit">Continue</button>
+      </form>
     </div>
-    <div id="toast-container"></div>
+  </div>
 
-    <main class="w-full max-w-[1080px] min-h-[680px] flex flex-col lg:flex-row glass-card overflow-hidden relative z-10">
-        <div
-            class="w-full lg:w-5/12 relative flex flex-col justify-between p-10 lg:p-14 overflow-hidden border-b lg:border-b-0 lg:border-r border-white/5 gradient-accent-top">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none"></div>
-            <div class="relative z-10 flex items-center gap-3">
-                <div
-                    class="size-11 rounded-2xl bg-glass-light backdrop-blur-md border border-white/10 flex items-center justify-center shadow-glass">
-                    <span class="material-symbols-rounded text-white text-[22px]">work_update</span>
-                </div>
-                <span class="font-display font-bold text-xl tracking-tight text-white">JobPortal</span>
-            </div>
-            <div class="relative z-10 mt-8 lg:mt-0">
-                <h1 class="font-display text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight mb-6 text-gradient-main">
-                    Shape your <br />
-                    <span class="text-gradient-accent">career future.</span>
-                </h1>
-                <p class="text-gray-400 text-lg font-light leading-relaxed max-w-sm">
-                    The premium platform connecting exceptional talent with world-class opportunities.
-                </p>
-            </div>
-            <div class="relative z-10 hidden lg:block mt-10">
-                <div class="flex items-center gap-4 text-sm">
-                    <div class="flex -space-x-3">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces"
-                            alt="User 1"
-                            class="w-9 h-9 rounded-full border border-white/10 object-cover shadow-glass" />
-                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=faces"
-                            alt="User 2"
-                            class="w-9 h-9 rounded-full border border-white/10 object-cover shadow-glass" />
-                        <div
-                            class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/20 flex items-center justify-center text-[10px] font-bold shadow-glass text-white">
-                            +2k</div>
-                    </div>
-                    <p class="text-gray-400 font-medium">Join top professionals today.</p>
-                </div>
-            </div>
-        </div>
+<script>
+  const tabLogin = document.getElementById('tabLogin');
+  const tabSignup = document.getElementById('tabSignup');
+  const mode = document.getElementById('mode');
+  const emailBox = document.getElementById('emailBox');
+  const confirmBox = document.getElementById('confirmBox');
+  const alertBox = document.getElementById('alert');
+  const form = document.getElementById('authForm');
+  const submitBtn = document.getElementById('submitBtn');
 
-        <div class="w-full lg:w-7/12 flex flex-col justify-center p-8 lg:p-16 relative gradient-accent-bottom">
-            <div class="w-full max-w-md mx-auto relative z-10">
-                <div class="mb-10 text-center h-20">
-                    <h2 id="portal-heading"
-                        class="font-display text-3xl font-bold text-white mb-2 tracking-tight fade-text">Welcome Back
-                    </h2>
-                    <p id="portal-subheading" class="text-gray-500 text-sm fade-text">Please enter your details to
-                        access your account.</p>
-                </div>
+  function showAlert(type, msg) {
+    alertBox.className = `alert show ${type}`;
+    alertBox.textContent = msg;
+  }
+  function clearAlert() {
+    alertBox.className = 'alert';
+    alertBox.textContent = '';
+  }
 
-                <div id="glider-container"
-                    class="mb-10 segmented-control-container relative w-full max-w-[280px] mx-auto h-[52px]">
-                    <div id="tab-glider"></div>
-                    <button id="tab-login" class="tab-btn active" onclick="handleBtnClick('login')">Log In</button>
-                    <button id="tab-signup" class="tab-btn" onclick="handleBtnClick('signup')">Sign Up</button>
-                </div>
+  function setMode(newMode) {
+    mode.value = newMode;
+    const signup = newMode === 'signup';
 
-                <form id="portal-form" class="space-y-6" onsubmit="handlePortalAuth(event)">
-                    <input type="hidden" name="mode" id="input-mode" value="login">
+    tabLogin.classList.toggle('active', !signup);
+    tabSignup.classList.toggle('active', signup);
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                            Username
-                        </label>
-                        <div class="input-group-wrapper relative group">
-                            <span class="material-symbols-rounded absolute left-4 top-3.5 text-gray-400 input-icon text-[22px]">person</span>
-                            <input id="input-username" name="username"
-                                class="glass-input w-full h-12 pl-12 pr-4 rounded-xl placeholder-gray-600 outline-none font-medium text-sm"
-                                placeholder="Enter username" required type="text" />
-                        </div>
-                    </div>
+    emailBox.style.display = signup ? 'block' : 'none';
+    confirmBox.style.display = signup ? 'block' : 'none';
 
-                    <div id="email-group" class="animate-height opacity-0" style="max-height: 0; margin-top: 0;">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                            Email Address
-                        </label>
-                        <div class="input-group-wrapper relative group">
-                            <span class="material-symbols-rounded absolute left-4 top-3.5 text-gray-400 input-icon text-[22px]">mail</span>
-                            <input id="input-email" name="email"
-                                class="glass-input w-full h-12 pl-12 pr-4 rounded-xl placeholder-gray-600 outline-none font-medium text-sm"
-                                placeholder="Enter email address" type="email" />
-                        </div>
-                    </div>
+    document.getElementById('email').required = signup;
+    document.getElementById('confirm_password').required = signup;
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                            Password
-                        </label>
-                        <div class="input-group-wrapper relative group">
-                            <span class="material-symbols-rounded absolute left-4 top-3.5 text-gray-400 input-icon text-[22px]">lock</span>
-                            <input id="input-password" name="password"
-                                class="glass-input w-full h-12 pl-12 pr-12 rounded-xl placeholder-gray-600 outline-none font-medium text-sm"
-                                placeholder="Enter password" required type="password" />
-                            <button type="button"
-                                class="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-gray-400 hover:text-accent-cyan transition-colors"
-                                onclick="togglePassVisibility(this)">
-                                <span class="material-symbols-rounded text-[20px]">visibility_off</span>
-                            </button>
-                        </div>
-                        <!-- <div id="forgot-container" class="flex justify-end mt-2 animate-height"
-                            style="max-height: 50px; opacity: 1; margin-top: 0.5rem;">
-                            <a href="forgot_password.php"
-                                class="text-xs font-medium text-accent-cyan hover:text-accent-blue transition-colors fade-text">
-                                Forgot Password?
-                            </a>
-                        </div> -->
-                    </div>
+    submitBtn.textContent = signup ? 'Create account' : 'Login';
+    clearAlert();
+  }
 
-                    <div id="confirm-password-group" class="animate-height opacity-0" style="max-height: 0; margin-top: 0;">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                            Confirm Password
-                        </label>
-                        <div class="input-group-wrapper relative group">
-                            <span class="material-symbols-rounded absolute left-4 top-3.5 text-gray-400 input-icon text-[22px]">lock_reset</span>
-                            <input id="input-confirm-password" name="confirm_password"
-                                class="glass-input w-full h-12 pl-12 pr-12 rounded-xl placeholder-gray-600 outline-none font-medium text-sm"
-                                placeholder="Confirm Password" type="password" />
-                            <button type="button"
-                                class="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-gray-400 hover:text-accent-cyan transition-colors"
-                                onclick="togglePassVisibility(this)">
-                                <span class="material-symbols-rounded text-[20px]">visibility_off</span>
-                            </button>
-                        </div>
-                    </div>
+  tabLogin.addEventListener('click', () => setMode('login'));
+  tabSignup.addEventListener('click', () => setMode('signup'));
 
-                    <button id="portal-submit-btn" type="submit"
-                        class="w-full h-12 mt-6 btn-glass-primary text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm tracking-wide">
-                        <span id="btn-text" class="fade-text">Log In</span>
-                        <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
-                    </button>
-                </form>
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlert();
 
-                <p class="text-center text-[10px] text-gray-600 mt-8 font-medium tracking-wide uppercase">
-                    JobPortal Inc. © 2025
-                </p>
-            </div>
-        </div>
-    </main>
+    const m = mode.value;
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value.trim();
+    const confirm = document.getElementById('confirm_password').value;
 
-    <script>
-        let currentMode = 'login';
+    if (!username || !password) {
+      showAlert('error', 'Username and password are required.');
+      return;
+    }
 
-        const container = document.getElementById('glider-container');
-        const glider = document.getElementById('tab-glider');
+    if (m === 'signup') {
+      if (!email) { showAlert('error', 'Email is required for signup.'); return; }
+      if (password !== confirm) { showAlert('error', 'Passwords do not match.'); return; }
+    }
 
-        let isDragging = false;
-        let dragStartX = 0;
-        let startXOffset = 0;
-        let currentX = 0;
-        let targetX = 0;
-        let maxTranslate = 0;
-        let dragThreshold = 5;
-        let hasMoved = false;
+    submitBtn.disabled = true;
 
-        let animationId = null;
-        let animStartX = 0;
-        let startTime = null;
-        let animDuration = 600;
+    try {
+      const fd = new FormData(form);
 
-        function updateDimensions() {
-            const rect = container.getBoundingClientRect();
-            maxTranslate = rect.width / 2;
+      const res = await fetch('auth.php', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',   // be explicit so Set-Cookie is honored
+        cache: 'no-store',
+      });
+
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        showAlert('success', data.message || 'Success');
+        if (data.redirect === 'login') {
+          setTimeout(() => setMode('login'), 800);
+        } else if (data.redirect) {
+          setTimeout(() => window.location.href = data.redirect, 500);
         }
+      } else {
+        // Show every error message we have
+        const parts = [];
+        if (data.message) parts.push(`Message: ${data.message}`);
+        if (data.status_code) parts.push(`Status: ${data.status_code}`);
+        if (data.backend_data) parts.push(`Backend data: ${JSON.stringify(data.backend_data, null, 2)}`);
+        if (data.backend_raw) parts.push(`Backend raw: ${data.backend_raw}`);
+        showAlert('error', parts.join('\n'));
+      }
+    } catch (err) {
+      showAlert('error', 'Client error: ' + (err?.message || String(err)));
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 
-        window.addEventListener('resize', () => {
-            updateDimensions();
-            if (!isDragging && !animationId) {
-                currentX = currentMode === 'login' ? 0 : maxTranslate;
-                renderGlider(currentX);
-            }
-        });
-        updateDimensions();
-
-        container.addEventListener('mousedown', startDrag);
-        document.addEventListener('mousemove', onDrag);
-        document.addEventListener('mouseup', endDrag);
-
-        container.addEventListener('touchstart', startDrag, { passive: false });
-        document.addEventListener('touchmove', onDrag, { passive: false });
-        document.addEventListener('touchend', endDrag);
-
-        function startDrag(e) {
-            if (animationId) cancelAnimationFrame(animationId);
-            animationId = null;
-
-            isDragging = true;
-            hasMoved = false;
-            updateDimensions();
-
-            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            dragStartX = clientX;
-            startXOffset = currentX;
-        }
-
-        function onDrag(e) {
-            if (!isDragging) return;
-
-            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            const diff = clientX - dragStartX;
-
-            if (Math.abs(diff) > dragThreshold) {
-                hasMoved = true;
-                e.preventDefault();
-            }
-
-            let proposedX = startXOffset + diff;
-            if (proposedX < 0) proposedX = 0;
-            if (proposedX > maxTranslate) proposedX = maxTranslate;
-
-            currentX = proposedX;
-            renderGlider(currentX);
-        }
-
-        function endDrag(e) {
-            if (!isDragging) return;
-            isDragging = false;
-
-            if (!hasMoved) return;
-
-            const progress = currentX / maxTranslate;
-            const targetMode = progress > 0.5 ? 'signup' : 'login';
-            animateToMode(targetMode);
-        }
-
-        function handleBtnClick(mode) {
-            if (hasMoved) return;
-            if (currentMode === mode) return;
-            animateToMode(mode);
-        }
-
-        function animateToMode(mode) {
-            updateDimensions();
-            currentMode = mode;
-            targetX = mode === 'login' ? 0 : maxTranslate;
-            animStartX = currentX;
-
-            const dist = Math.abs(targetX - animStartX);
-            const pct = dist / maxTranslate;
-            animDuration = Math.max(250, pct * 600);
-
-            startTime = null;
-            if (animationId) cancelAnimationFrame(animationId);
-            animationId = requestAnimationFrame(step);
-
-            updateUI(mode);
-        }
-
-        function step(timestamp) {
-            if (!startTime) startTime = timestamp;
-            const elapsed = timestamp - startTime;
-            const progress = Math.min(elapsed / animDuration, 1);
-            const ease = 1 - Math.pow(1 - progress, 4);
-
-            currentX = animStartX + (targetX - animStartX) * ease;
-            renderGlider(currentX);
-
-            if (progress < 1) {
-                animationId = requestAnimationFrame(step);
-            } else {
-                currentX = targetX;
-                renderGlider(currentX);
-                animationId = null;
-            }
-        }
-
-        function renderGlider(x) {
-            let pct = 0;
-            if (maxTranslate > 0) pct = x / maxTranslate;
-            if (pct < 0) pct = 0;
-            if (pct > 1) pct = 1;
-
-            const scaleAmount = Math.sin(pct * Math.PI);
-            const finalScale = 1 + (0.6 * scaleAmount);
-
-            if (scaleAmount > 0.5) {
-                glider.style.background = 'rgba(255, 255, 255, 0.2)';
-                glider.style.boxShadow = 'inset 0 2px 4px rgba(255,255,255,0.7), 0 0 40px rgba(90, 200, 250, 0.5)';
-            } else {
-                glider.style.background = 'rgba(255, 255, 255, 0.08)';
-                glider.style.boxShadow = 'inset 0 2px 4px rgba(255,255,255,0.6), 0 8px 25px rgba(0,0,0,0.3)';
-            }
-
-            glider.style.transform = `translateX(${x}px) scale(${finalScale})`;
-        }
-
-        function updateUI(mode) {
-            const tabLogin = document.getElementById('tab-login');
-            const tabSignup = document.getElementById('tab-signup');
-
-            const forgotContainer = document.getElementById('forgot-container');
-            const confirmGroup = document.getElementById('confirm-password-group');
-            const emailGroup = document.getElementById('email-group');
-
-            const heading = document.getElementById('portal-heading');
-            const subheading = document.getElementById('portal-subheading');
-            const btnText = document.getElementById('btn-text');
-
-            document.getElementById('input-mode').value = mode;
-
-            const textElements = [heading, subheading, btnText];
-            textElements.forEach(el => el.style.opacity = '0');
-
-            if (mode === 'login') {
-                tabLogin.classList.add('active');
-                tabSignup.classList.remove('active');
-
-                confirmGroup.style.maxHeight = '0';
-                confirmGroup.style.opacity = '0';
-                confirmGroup.style.marginTop = '0';
-
-                emailGroup.style.maxHeight = '0';
-                emailGroup.style.opacity = '0';
-                emailGroup.style.marginTop = '0';
-
-                setTimeout(() => {
-                    forgotContainer.style.maxHeight = '50px';
-                    forgotContainer.style.opacity = '1';
-                    forgotContainer.style.marginTop = '0.5rem';
-                }, 100);
-
-                setTimeout(() => {
-                    heading.textContent = "Welcome Back";
-                    subheading.textContent = "Please enter your details to access your account.";
-                    btnText.textContent = "Log In";
-                    textElements.forEach(el => el.style.opacity = '1');
-                }, 300);
-
-            } else {
-                tabSignup.classList.add('active');
-                tabLogin.classList.remove('active');
-
-                forgotContainer.style.maxHeight = '0';
-                forgotContainer.style.opacity = '0';
-                forgotContainer.style.marginTop = '0';
-
-                setTimeout(() => {
-                    emailGroup.style.maxHeight = '100px';
-                    emailGroup.style.opacity = '1';
-                    emailGroup.style.marginTop = '1.5rem';
-
-                    confirmGroup.style.maxHeight = '100px';
-                    confirmGroup.style.opacity = '1';
-                    confirmGroup.style.marginTop = '1.5rem';
-                }, 100);
-
-                setTimeout(() => {
-                    heading.textContent = "Create Account";
-                    subheading.textContent = "Join the network of world-class professionals.";
-                    btnText.textContent = "Sign Up";
-                    textElements.forEach(el => el.style.opacity = '1');
-                }, 300);
-            }
-        }
-
-        function handlePortalAuth(e) {
-            e.preventDefault();
-
-            const form = document.getElementById('portal-form');
-            const usernameInput = document.getElementById('input-username');
-            const emailInput = document.getElementById('input-email');
-            const passwordInput = document.getElementById('input-password');
-            const confirmPassInput = document.getElementById('input-confirm-password');
-            const btn = document.getElementById('portal-submit-btn');
-
-            if (!usernameInput.value) {
-                showToast('Username is required', 'error');
-                animateError(usernameInput);
-                return;
-            }
-            if (!passwordInput.value || passwordInput.value.length < 6) {
-                showToast('Password must be at least 6 chars', 'error');
-                animateError(passwordInput);
-                return;
-            }
-
-            if (currentMode === 'signup') {
-                const email = emailInput.value;
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!email || !emailRegex.test(email)) {
-                    showToast('Please enter a valid email', 'error');
-                    animateError(emailInput);
-                    return;
-                }
-
-                if (passwordInput.value !== confirmPassInput.value) {
-                    showToast('Passwords do not match', 'error');
-                    animateError(confirmPassInput);
-                    return;
-                }
-            }
-
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = '<span class="material-symbols-rounded animate-spin text-white">sync</span>';
-            btn.disabled = true;
-
-            const formData = new FormData(form);
-
-            fetch('auth.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-
-                if (data.status === 'success') {
-                    showToast(data.message, 'success');
-
-                    if (data.redirect === 'login') {
-                        form.reset();
-                        setTimeout(() => handleBtnClick('login'), 1500);
-                    } else if (data.redirect) {
-                        setTimeout(() => {
-                            window.location.href = data.redirect;
-                        }, 1000);
-                    }
-                } else {
-                    showToast(data.message, 'error');
-                    if (data.code === 'UNAUTHORIZED') {
-                        animateError(passwordInput);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-                showToast('Server connection failed. Please try again.', 'error');
-            });
-        }
-
-        function animateError(element) {
-            if (!element) return;
-            element.classList.add('shake-input');
-            element.focus();
-            setTimeout(() => {
-                element.classList.remove('shake-input');
-            }, 400);
-        }
-
-        function togglePassVisibility(btn) {
-            const wrapper = btn.parentElement;
-            const input = wrapper.querySelector('input');
-            const icon = btn.querySelector('span');
-
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.textContent = 'visibility';
-                btn.classList.add('text-accent-cyan');
-            } else {
-                input.type = 'password';
-                icon.textContent = 'visibility_off';
-                btn.classList.remove('text-accent-cyan');
-            }
-        }
-
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast`;
-
-            const iconName = type === 'success' ? 'check_circle' : 'error';
-            const iconColor = type === 'success' ? 'text-accent-cyan' : 'text-red-400';
-
-            toast.innerHTML = `<span class="material-symbols-rounded ${iconColor} text-[20px]">${iconName}</span><span>${message}</span>`;
-            container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, -20px)';
-                toast.style.transition = 'all 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-    </script>
+  setMode('login');
+</script>
 </body>
 </html>

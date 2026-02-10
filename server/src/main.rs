@@ -34,7 +34,8 @@ async fn main() {
     // Protected routes (auth required)
     let protected_routes = Router::new()
         .route("/profile", get(get_profile))
-        .route("/home", post(get_jobs))
+        .route("/get-jobs", post(get_jobs))
+        .route("/create-job", post(create_job))
         .route_layer(middleware::from_fn(auth_middleware));
 
     // Combine them
@@ -44,7 +45,7 @@ async fn main() {
         .layer(cors)
         .with_state(db);
 
-    let listener = tokio::net::TcpListener::bind("localhost:3000")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
         .expect("Couldn't lock port 3000 of localhost");
     serve(listener, app).await.unwrap()

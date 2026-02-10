@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+    echo json_encode(['status' => 'error', 'message' => 'Method not allowed', 'status_code' => 405]);
     exit;
 }
 
@@ -15,33 +15,30 @@ $username = trim($_POST['username'] ?? '');
 $password = $_POST['password'] ?? '';
 $email = trim($_POST['email'] ?? '');
 
-// Validate inputs
+if (empty($mode)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'mode is required', 'status_code' => 400]);
+    exit;
+}
+
 if (empty($username) || empty($password)) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Username and password are required'
-    ]);
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Username and password are required', 'status_code' => 400]);
     exit;
 }
 
 if ($mode === 'signup') {
-    // Signup logic
     if (empty($email)) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Email is required for signup'
-        ]);
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Email is required for signup', 'status_code' => 400]);
         exit;
     }
-
-    // Extract name from username (or use email prefix as name)
-    $name = $username;
 
     $signupData = [
         'uid' => $username,
         'pword' => $password,
         'email' => $email,
-        'name' => $name
+        'name' => $username,
     ];
 
     $result = callRustAPI('/signup', 'POST', $signupData);
@@ -50,61 +47,53 @@ if ($mode === 'signup') {
         echo json_encode([
             'status' => 'success',
             'message' => 'Account created successfully! Please log in.',
-            'redirect' => 'login'
+            'redirect' => 'login',
+            'status_code' => $result['status'],
         ]);
-    } else {
-        echo json_encode([
-            'status' => 'error',
-            'message' => $result['message']
-        ]);
+        exit;
     }
 
-} elseif ($mode === 'login') {
-    // Login logic
+    http_response_code($result['status'] ?: 500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => $result['message'],
+        'status_code' => $result['status'],
+        'backend_data' => $result['data'],
+        'backend_raw' => $result['raw'],
+    ]);
+    exit;
+}
+
+if ($mode === 'login') {
     $signinData = [
         'uid' => $username,
-        'pword' => $password
+        'pword' => $password,
     ];
 
     $result = callRustAPI('/signin', 'POST', $signinData);
 
-    if ($result['success'] && isset($result['data']['token'])) {
-        $token = $result['data']['token'];
-
-        // Store JWT in secure cookie
-        setJWTCookie($token);
+    if ($result['success'] && isset($result['data']['token']) && is_string($result['data']['token'])) {
+        setJWTCookie($result['data']['token']);
 
         echo json_encode([
             'status' => 'success',
             'message' => 'Login successful!',
-            'redirect' => 'dashboard.php'
+            'redirect' => 'dashboard.php',
+            'status_code' => $result['status'],
         ]);
-    } else {
-        // Handle specific error codes
-        if ($result['status'] === 401) {
-            echo json_encode([
-                'status' => 'error',
-                'message' => 'Incorrect username or password',
-                'code' => 'UNAUTHORIZED'
-            ]);
-        } else if ($result['status'] === 500) {
-            echo json_encode([
-                'status' => 'error',
-                'message' => 'An error occurred on the server. Please try again later.',
-                'code' => 'SERVER_ERROR'
-            ]);
-        } else {
-            echo json_encode([
-                'status' => 'error',
-                'message' => $result['message']
-            ]);
-        }
+        exit;
     }
 
-} else {
+    http_response_code($result['status'] ?: 401);
     echo json_encode([
         'status' => 'error',
-        'message' => 'Invalid authentication mode'
+        'message' => $result['message'],
+        'status_code' => $result['status'],
+        'backend_data' => $result['data'],
+        'backend_raw' => $result['raw'],
     ]);
+    exit;
 }
-?>
+
+http_response_code(400);
+echo json_encode(['status' => 'error', 'message' => 'Invalid authentication mode', 'status_code' => 400]);

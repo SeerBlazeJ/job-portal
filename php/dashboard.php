@@ -10,7 +10,6 @@ if (!isAuthenticated()) {
 
 // Get JWT token
 $token = getJWTToken();
-
 // Fetch user profile to get uid
 $profileResult = callRustAPI('/profile', 'GET', null, $token);
 
@@ -26,7 +25,7 @@ $uid = $userProfile['uid'];
 $userName = $userProfile['name'];
 
 // Fetch jobs using uid
-$jobsResult = callRustAPI('/home', 'POST', ['uid' => $uid], $token);
+$jobsResult = callRustAPI('/get-jobs', 'POST', null, $token);
 $jobs = $jobsResult['success'] ? $jobsResult['data'] : [];
 ?>
 
@@ -200,19 +199,39 @@ $jobs = $jobsResult['success'] ? $jobsResult['data'] : [];
         .location {
             color: #17a2b8;
         }
+        .btn-create-job {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.3s;
+    display: inline-block;
+}
+
+.btn-create-job:hover {
+    background: #218838;
+}
+
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Job Portal Dashboard</h1>
+        <h1>🎯 Job Portal Dashboard</h1>
             <div class="user-info">
-                <span class="username">Welcome, <?php echo htmlspecialchars($userName); ?>!</span>
-                <form action="logout.php" method="POST" style="margin: 0;">
-                    <button type="submit" class="logout-btn">Logout</button>
-                </form>
-            </div>
+            <span class="username">Welcome, <?php echo htmlspecialchars($userName); ?>!</span>
+            <a href="create_job.php" class="btn-create-job">+ Create Job</a>
+            <form action="logout.php" method="POST" style="margin: 0;">
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
         </div>
+    </div>
+
 
         <div class="jobs-section">
             <h2>📋 Recommended Jobs for You</h2>

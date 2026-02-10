@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use surrealdb::RecordId;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum EduLevel {
     SecondarySchool = 0,
@@ -102,7 +102,20 @@ pub struct JobsData {
     pub salary_range_start: u32,
     pub salary_range_end: u32,
     pub datetime_created: NaiveDateTime,
-    pub datetime_due: NaiveDateTime,
+    pub datetime_due: Option<NaiveDateTime>,
+    pub min_ed_lvl: EduLevel,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CreateJobRequest {
+    pub title: String,
+    pub description: String,
+    pub skills_required: Option<Vec<String>>,
+    pub majors_accepted: Option<Vec<String>>,
+    pub location: String,
+    pub salary_range_start: Option<u32>,
+    pub salary_range_end: Option<u32>,
+    pub datetime_due: String,
     pub min_ed_lvl: EduLevel,
 }
 
@@ -121,6 +134,6 @@ pub struct Job {
     pub salary_range_start: u32,
     pub salary_range_end: u32,
     pub datetime_created: NaiveDateTime,
-    pub datetime_due: NaiveDateTime,
+    pub datetime_due: Option<NaiveDateTime>,
     pub min_ed_lvl: EduLevel,
 }
