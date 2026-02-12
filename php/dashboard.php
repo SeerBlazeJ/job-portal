@@ -235,7 +235,7 @@ $jobs = $jobsResult['success'] ? $jobsResult['data'] : [];
 
 
         <div class="jobs-section">
-            <h2>📋 Recommended Jobs for You</h2>
+            <h2>📋 For You</h2>
 
             <?php if (empty($jobs)): ?>
                 <div class="no-jobs">
@@ -276,6 +276,14 @@ $jobs = $jobsResult['success'] ? $jobsResult['data'] : [];
                                 <?php if (!empty($job['min_ed_lvl'])): ?>
                                     <div class="detail-item">
                                         🎓 <strong>Min. Education Level:</strong> <?php echo htmlspecialchars($job['min_ed_lvl']); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($job['datetime_created'])): ?>
+                                    <div class="detail-item">
+                                        🎓 <strong>Posted on:</strong> <?php
+                                        $datetime = $job['datetime_created'];
+                                        $dtm = new Datetime($datetime);
+                                        echo htmlspecialchars($dtm->format('F j, Y g:i A')).' UTC'; ?>
                                     </div>
                                 <?php endif; ?>
                             </div>

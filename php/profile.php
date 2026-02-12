@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($input['email']) && !empty(trim($input['email']))) {
         $updateData['email'] = trim($input['email']);
     }
+    // Update logic: Checkbox/Toggle value boolean
     if (isset($input['is_finding_job'])) {
         $updateData['is_finding_job'] = (bool)$input['is_finding_job'];
     }
@@ -250,6 +251,80 @@ $profile = $profileResult['data'];
             border-color: #667eea;
         }
 
+        /* Toggle Switch Styles */
+        .toggle-switch-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #667eea;
+        }
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(30px);
+            -ms-transform: translateX(30px);
+            transform: translateX(30px);
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            color: #999;
+            font-weight: 600;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .toggle-label.active {
+            color: #333;
+        }
+
+        /* Skills & Education Styles */
         .skills-container {
             display: flex;
             flex-wrap: wrap;
@@ -339,17 +414,6 @@ $profile = $profileResult['data'];
             background: #218838;
         }
 
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: auto;
-            cursor: pointer;
-        }
-
         .alert {
             padding: 15px;
             border-radius: 5px;
@@ -416,22 +480,18 @@ $profile = $profileResult['data'];
         .status-active {
             background: #d4edda;
             color: #155724;
+            border: 1px solid #c3e6cb;
         }
 
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
+        .status-poster {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
         }
 
         .empty-state {
             color: #999;
             font-style: italic;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
         }
 
         .edu-level-badge {
@@ -465,7 +525,6 @@ $profile = $profileResult['data'];
 
             <div id="alert" class="alert"></div>
 
-            <!-- View Mode -->
             <div id="view-mode" class="view-mode">
                 <div class="profile-section">
                     <h3>📋 Basic Information</h3>
@@ -479,12 +538,12 @@ $profile = $profileResult['data'];
                         <div class="info-label">Email:</div>
                         <div class="info-value"><?php echo htmlspecialchars($profile['email']); ?></div>
 
-                        <div class="info-label">Job Status:</div>
+                        <div class="info-label">Account Role:</div>
                         <div class="info-value">
                             <?php if ($profile['is_finding_job']): ?>
-                                <span class="status-badge status-active">🔍 Actively Looking for Jobs</span>
+                                <span class="status-badge status-active">🔍 Job Seeker</span>
                             <?php else: ?>
-                                <span class="status-badge status-inactive">Not Looking for Jobs</span>
+                                <span class="status-badge status-poster">📢 Job Poster</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -523,7 +582,6 @@ $profile = $profileResult['data'];
                 </div>
             </div>
 
-            <!-- Edit Mode -->
             <div id="edit-mode" class="edit-mode">
                 <form id="profile-form">
                     <div class="profile-section">
@@ -540,11 +598,18 @@ $profile = $profileResult['data'];
                         </div>
 
                         <div class="form-group">
-                            <label class="checkbox-group">
-                                <input type="checkbox" id="is_finding_job" name="is_finding_job"
-                                    <?php echo $profile['is_finding_job'] ? 'checked' : ''; ?>>
-                                <span>I am actively looking for job opportunities</span>
-                            </label>
+                            <label>Primary Role</label>
+                            <div class="toggle-switch-container">
+                                <span class="toggle-label <?php echo !$profile['is_finding_job'] ? 'active' : ''; ?>" id="label-poster">Job Poster</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="is_finding_job" name="is_finding_job"
+                                        <?php echo $profile['is_finding_job'] ? 'checked' : ''; ?>
+                                        onchange="updateToggleLabels()">
+                                    <span class="slider round"></span>
+                                </label>
+                                <span class="toggle-label <?php echo $profile['is_finding_job'] ? 'active' : ''; ?>" id="label-seeker">Job Seeker</span>
+                            </div>
+                            <div class="helper-text">Switch to "Job Poster" if you intend to post jobs. Switch to "Job Seeker" to find jobs.</div>
                         </div>
                     </div>
 
@@ -583,6 +648,21 @@ $profile = $profileResult['data'];
         const saveBtn = document.getElementById('save-btn');
         const alert = document.getElementById('alert');
 
+        // Toggle Switch Logic
+        function updateToggleLabels() {
+            const checkbox = document.getElementById('is_finding_job');
+            const labelPoster = document.getElementById('label-poster');
+            const labelSeeker = document.getElementById('label-seeker');
+
+            if (checkbox.checked) {
+                labelSeeker.classList.add('active');
+                labelPoster.classList.remove('active');
+            } else {
+                labelSeeker.classList.remove('active');
+                labelPoster.classList.add('active');
+            }
+        }
+
         // Skills management
         const skillsInput = document.getElementById('skills_input');
         const skillsTagsContainer = document.getElementById('skills_tags');
@@ -606,6 +686,8 @@ $profile = $profileResult['data'];
         // Initialize displays
         renderSkills();
         renderEducation();
+        // Initialize toggle labels
+        updateToggleLabels();
 
         // Skills functions
         skillsInput.addEventListener('keydown', (e) => {
@@ -648,6 +730,17 @@ $profile = $profileResult['data'];
             }
 
             educationRecords.forEach((edu, index) => {
+                // FIX START: Convert integer from backend to string for dropdown matching
+                let currentEduValue = edu.education;
+                if (typeof currentEduValue === 'number') {
+                    // Map the integer (e.g., 3) to the string value (e.g., 'Bachelors')
+                    // based on the index in the eduLevels array
+                    if (eduLevels[currentEduValue]) {
+                        currentEduValue = eduLevels[currentEduValue].value;
+                    }
+                }
+                // FIX END
+
                 const eduItem = document.createElement('div');
                 eduItem.className = 'education-form-item';
                 eduItem.innerHTML = `
@@ -657,7 +750,7 @@ $profile = $profileResult['data'];
                         <label>Education Level *</label>
                         <select class="edu-level" data-index="${index}" required>
                             ${eduLevels.map(level => `
-                                <option value="${level.value}" ${edu.education === level.value ? 'selected' : ''}>
+                                <option value="${level.value}" ${currentEduValue === level.value ? 'selected' : ''}>
                                     ${level.label}
                                 </option>
                             `).join('')}
@@ -717,6 +810,7 @@ $profile = $profileResult['data'];
             educationRecords = <?php echo json_encode($profile['education'] ?? []); ?>;
             renderSkills();
             renderEducation();
+            updateToggleLabels(); // Reset toggle UI
             clearAlert();
         });
 
@@ -795,6 +889,7 @@ $profile = $profileResult['data'];
         // Make functions globally accessible
         window.removeSkill = removeSkill;
         window.removeEducation = removeEducation;
+        window.updateToggleLabels = updateToggleLabels;
     </script>
 </body>
 </html>

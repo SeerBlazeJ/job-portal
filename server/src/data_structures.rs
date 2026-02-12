@@ -1,7 +1,6 @@
-use std::str::FromStr;
-
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::str::FromStr;
 use surrealdb::RecordId;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,6 +29,22 @@ impl FromStr for EduLevel {
     }
 }
 
+impl TryFrom<u8> for EduLevel {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(EduLevel::SecondarySchool),
+            1 => Ok(EduLevel::HighSchool),
+            2 => Ok(EduLevel::Diploma),
+            3 => Ok(EduLevel::Bachelors),
+            4 => Ok(EduLevel::Masters),
+            5 => Ok(EduLevel::PhD),
+            _ => Err(()),
+        }
+    }
+}
+
 impl std::fmt::Display for EduLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -42,10 +57,32 @@ impl std::fmt::Display for EduLevel {
         }
     }
 }
+fn deserialize_edu_level<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let level = EduLevel::from_str(&s)
+        .map_err(|_| serde::de::Error::custom("Invalid Education Level Value"))?;
+    Ok(level as u8)
+}
+
+fn serialize_edu_level<S>(value: &u8, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let level = EduLevel::try_from(*value)
+        .map_err(|_| serde::ser::Error::custom("Invalid education level"))?;
+    serializer.serialize_str(&level.to_string())
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Education {
-    pub education: EduLevel,
+    #[serde(
+        serialize_with = "serialize_edu_level",
+        deserialize_with = "deserialize_edu_level"
+    )]
+    pub education: u8,
     pub major: String,
     pub edu_institution: String,
 }
@@ -85,9 +122,16 @@ pub struct UpdateProfileRequest {
     pub email: Option<String>,
     pub is_finding_job: Option<bool>,
     pub skills: Option<Vec<String>>,
-    pub education: Option<Vec<Education>>,
+    pub education: Option<Vec<EducationUpdateRequest>>,
     pub current_work: Option<Work>,
     pub previous_experience: Option<Vec<Work>>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EducationUpdateRequest {
+    pub education: EduLevel,
+    pub major: String,
+    pub edu_institution: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -176,5 +220,15 @@ pub struct Job {
     pub salary_range_end: u32,
     pub datetime_created: NaiveDateTime,
     pub datetime_due: Option<NaiveDateTime>,
-    pub min_ed_lvl: EduLevel,
+    pub min_ed_lvl: u8,
+}
+
+impl From<EducationUpdateRequest> for Education {
+    fn from(value: EducationUpdateRequest) -> Self {
+        Education {
+            education: value.education as u8,
+            major: value.major,
+            edu_institution: value.edu_institution,
+        }
+    }
 }

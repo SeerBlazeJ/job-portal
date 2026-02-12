@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use axum::{
@@ -91,100 +92,244 @@ pub async fn get_jobs(
     State(db): State<Surreal<Db>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<JobsData>>, StatusCode> {
-    // Use the uid from the validated token
     let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(claims.uid, &db).await?;
+    let mut unique_jobs: HashMap<String, (Job, f32)> = HashMap::new(); // (Job, score)
 
-    let jobs: Vec<Job> = match (skills_vec, edu_info_vec) {
-        (None, None) => db
-            .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 15")
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .take(0)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+    match (skills_vec, edu_info_vec) {
+        (None, None) => {
+            let jobs: Vec<Job> = db
+                .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 20")
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .take(0)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        // Case 2: Only skills exist - filter by skills
-        (Some(skills), None) => db
-            .query(
-                "SELECT * FROM jobs
-                 WHERE is_active = true
-                 AND skills_required CONTAINSANY $skills
-                 ORDER BY rand() LIMIT 15",
-            )
-            .bind(("skills", skills))
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .take(0)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+            for job in jobs {
+                if let Some(id) = &job.id {
+                    unique_jobs.insert(id.to_string(), (job, 0.5)); // Base score for random
+                }
+            }
+        }
 
-        // Case 3: Only education info exists - filter by education
-        (None, Some(edu_info)) => {
-            let mut all_jobs = Vec::new();
-
-            for (edu_level, major) in edu_info {
-                let jobs: Vec<Job> = db
-                    .query(
-                        "SELECT * FROM jobs
+        (Some(skills), None) => {
+            // Get jobs matching any skills
+            let matched_jobs: Vec<Job> = db
+                .query(
+                    "SELECT * FROM jobs
                      WHERE is_active = true
-                     AND min_ed_lvl <= $edu_level
-                     AND $major INSIDE majors_accepted
-                     ORDER BY rand() LIMIT 15",
-                    )
-                    .bind(("edu_level", edu_level as i32))
-                    .bind(("major", major))
+                     AND skills_required CONTAINSANY $skills
+                     ORDER BY rand() LIMIT 30",
+                )
+                .bind(("skills", skills.clone()))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .take(0)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            // Score based on number of matching skills
+            for job in matched_jobs {
+                if let Some(id) = &job.id {
+                    let score = calculate_skill_match_score(&skills, &job.skills_required);
+                    unique_jobs.insert(id.to_string(), (job, score));
+                }
+            }
+
+            // If we have fewer than 15 jobs, add some random ones
+            if unique_jobs.len() < 15 {
+                let random_jobs: Vec<Job> = db
+                    .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 10")
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-                all_jobs.extend(jobs);
+                for job in random_jobs {
+                    if let Some(id) = &job.id {
+                        unique_jobs.entry(id.to_string()).or_insert((job, 0.3));
+                    }
+                }
             }
-
-            // Shuffle and limit to 15
-            use rand::seq::SliceRandom;
-            let mut rng = rand::rng();
-            all_jobs.shuffle(&mut rng);
-            all_jobs.truncate(15);
-            all_jobs
         }
 
-        // Case 4: Both skills and education info exist - filter by both
-        (Some(skills), Some(edu_info)) => {
-            let mut all_jobs = Vec::new();
+        // Case 3: Only education - filter by education level and majors
+        (None, Some(edu_info)) => {
+            // Extract all unique majors and find highest education level
+            let majors: Vec<String> = edu_info.iter().map(|(_, major)| major.clone()).collect();
+            let highest_edu_level = edu_info
+                .iter()
+                .map(|(level, _)| level.to_owned())
+                .max()
+                .unwrap_or(0);
 
-            for (edu_level, major) in edu_info {
-                let jobs: Vec<Job> = db
+            // Single query for all majors
+            let matched_jobs: Vec<Job> = db
+                .query(
+                    "SELECT * FROM jobs
+                     WHERE is_active = true
+                     AND min_ed_lvl <= $edu_level
+                     AND majors_accepted CONTAINSANY $majors
+                     ORDER BY rand() LIMIT 30",
+                )
+                .bind(("edu_level", highest_edu_level))
+                .bind(("majors", majors.clone()))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .take(0)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            for job in matched_jobs {
+                if let Some(id) = &job.id {
+                    let score = calculate_education_match_score(&majors, &job.majors_accepted);
+                    unique_jobs.insert(id.to_string(), (job, score));
+                }
+            }
+
+            // Fallback: Add jobs that match education level but not major
+            if unique_jobs.len() < 15 {
+                let fallback_jobs: Vec<Job> = db
                     .query(
                         "SELECT * FROM jobs
+                         WHERE is_active = true
+                         AND min_ed_lvl <= $edu_level
+                         ORDER BY rand() LIMIT 15",
+                    )
+                    .bind(("edu_level", highest_edu_level))
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .take(0)
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                for job in fallback_jobs {
+                    if let Some(id) = &job.id {
+                        unique_jobs.entry(id.to_string()).or_insert((job, 0.4));
+                    }
+                }
+            }
+        }
+
+        // Case 4: Both skills and education - comprehensive matching with scoring
+        (Some(skills), Some(edu_info)) => {
+            let majors: Vec<String> = edu_info.iter().map(|(_, major)| major.clone()).collect();
+            let highest_edu_level = edu_info
+                .iter()
+                .map(|(level, _)| level.to_owned())
+                .max()
+                .unwrap_or(0);
+
+            // Get jobs matching both skills and education
+            let perfect_matches: Vec<Job> = db
+                .query(
+                    "SELECT * FROM jobs
                      WHERE is_active = true
                      AND skills_required CONTAINSANY $skills
                      AND min_ed_lvl <= $edu_level
-                     AND $major INSIDE majors_accepted
-                     ORDER BY rand() LIMIT 15",
+                     AND majors_accepted CONTAINSANY $majors
+                     ORDER BY rand() LIMIT 30",
+                )
+                .bind(("skills", skills.clone()))
+                .bind(("edu_level", highest_edu_level))
+                .bind(("majors", majors.clone()))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .take(0)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            for job in perfect_matches {
+                if let Some(id) = &job.id {
+                    let skill_score = calculate_skill_match_score(&skills, &job.skills_required);
+                    let edu_score = calculate_education_match_score(&majors, &job.majors_accepted);
+                    let combined_score = (skill_score * 0.6) + (edu_score * 0.4); // Weight skills more
+                    unique_jobs.insert(id.to_string(), (job, combined_score));
+                }
+            }
+
+            // Fallback 1: Jobs matching skills only
+            if unique_jobs.len() < 15 {
+                let skill_matches: Vec<Job> = db
+                    .query(
+                        "SELECT * FROM jobs
+                         WHERE is_active = true
+                         AND skills_required CONTAINSANY $skills
+                         AND min_ed_lvl <= $edu_level
+                         ORDER BY rand() LIMIT 20",
                     )
                     .bind(("skills", skills.clone()))
-                    .bind(("edu_level", edu_level as i32))
-                    .bind(("major", major))
+                    .bind(("edu_level", highest_edu_level))
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-                all_jobs.extend(jobs);
+                for job in skill_matches {
+                    if let Some(id) = &job.id {
+                        let score =
+                            calculate_skill_match_score(&skills, &job.skills_required) * 0.7;
+                        unique_jobs.entry(id.to_string()).or_insert((job, score));
+                    }
+                }
             }
 
-            use rand::seq::SliceRandom;
-            let mut rng = rand::rng();
-            all_jobs.shuffle(&mut rng);
-            all_jobs.truncate(15);
-            all_jobs
+            // Fallback 2: Jobs matching education only
+            if unique_jobs.len() < 15 {
+                let edu_matches: Vec<Job> = db
+                    .query(
+                        "SELECT * FROM jobs
+                         WHERE is_active = true
+                         AND min_ed_lvl <= $edu_level
+                         AND majors_accepted CONTAINSANY $majors
+                         ORDER BY rand() LIMIT 15",
+                    )
+                    .bind(("edu_level", highest_edu_level))
+                    .bind(("majors", majors.clone()))
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .take(0)
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                for job in edu_matches {
+                    if let Some(id) = &job.id {
+                        let score =
+                            calculate_education_match_score(&majors, &job.majors_accepted) * 0.6;
+                        unique_jobs.entry(id.to_string()).or_insert((job, score));
+                    }
+                }
+            }
+
+            // Final fallback: Random jobs matching education level
+            if unique_jobs.len() < 10 {
+                let random_jobs: Vec<Job> = db
+                    .query(
+                        "SELECT * FROM jobs
+                         WHERE is_active = true
+                         AND min_ed_lvl <= $edu_level
+                         ORDER BY rand() LIMIT 10",
+                    )
+                    .bind(("edu_level", highest_edu_level))
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .take(0)
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                for job in random_jobs {
+                    if let Some(id) = &job.id {
+                        unique_jobs.entry(id.to_string()).or_insert((job, 0.3));
+                    }
+                }
+            }
         }
     };
 
+    // Sort by score (highest first) and take top 20
+    let mut sorted_jobs: Vec<(Job, f32)> = unique_jobs.into_values().collect();
+    sorted_jobs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_jobs.truncate(20);
+
+    // Fetch employer names concurrently
     let database = db.clone();
-    let futures = jobs.into_iter().map(|j| {
+    let futures = sorted_jobs.into_iter().map(|(job, _score)| {
         let db = database.clone();
         async move {
-            let employer_id_str = j.employer_id.to_string();
+            let employer_id_str = job.employer_id.to_string();
             let (table, key) = employer_id_str
                 .split_once(':')
                 .map(|(t, k)| (t.to_string(), k.to_string()))
@@ -202,19 +347,19 @@ pub async fn get_jobs(
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             Ok::<JobsData, StatusCode>(JobsData {
-                id: j.id.unwrap().to_string(),
+                id: job.id.unwrap().to_string(),
                 employer_name: name.unwrap_or_default(),
-                title: j.title,
-                description: j.description,
-                skills_required: j.skills_required,
-                majors_accepted: j.majors_accepted,
-                location: j.location,
-                is_active: j.is_active,
-                salary_range_start: j.salary_range_start,
-                salary_range_end: j.salary_range_end,
-                datetime_created: j.datetime_created,
-                datetime_due: j.datetime_due,
-                min_ed_lvl: j.min_ed_lvl,
+                title: job.title,
+                description: job.description,
+                skills_required: job.skills_required,
+                majors_accepted: job.majors_accepted,
+                location: job.location,
+                is_active: job.is_active,
+                salary_range_start: job.salary_range_start,
+                salary_range_end: job.salary_range_end,
+                datetime_created: job.datetime_created,
+                datetime_due: job.datetime_due,
+                min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
             })
         }
     });
@@ -223,6 +368,37 @@ pub async fn get_jobs(
     let jobs_data: Vec<JobsData> = results.into_iter().filter_map(|r| r.ok()).collect();
 
     Ok(Json(jobs_data))
+}
+
+fn calculate_skill_match_score(user_skills: &[String], job_skills: &[String]) -> f32 {
+    if job_skills.is_empty() {
+        return 0.5; // Neutral score if job has no skill requirements
+    }
+
+    let user_skills_set: HashSet<&String> = user_skills.iter().collect();
+    let job_skills_set: HashSet<&String> = job_skills.iter().collect();
+
+    let matching_skills = user_skills_set.intersection(&job_skills_set).count();
+    let total_job_skills = job_skills.len();
+
+    let match_percentage = matching_skills as f32 / total_job_skills as f32;
+
+    let extra_skills_bonus = if matching_skills > 0 { 0.1 } else { 0.0 };
+
+    (match_percentage + extra_skills_bonus).min(1.0)
+}
+
+fn calculate_education_match_score(user_majors: &[String], job_majors: &[String]) -> f32 {
+    if job_majors.is_empty() {
+        return 0.6;
+    }
+
+    let user_majors_set: HashSet<&String> = user_majors.iter().collect();
+    let job_majors_set: HashSet<&String> = job_majors.iter().collect();
+
+    let matching_majors = user_majors_set.intersection(&job_majors_set).count();
+
+    if matching_majors > 0 { 0.9 } else { 0.4 }
 }
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, StatusCode> {
@@ -272,10 +448,13 @@ pub async fn create_job(
         is_active: true,
         salary_range_start: data.salary_range_start.unwrap_or_default(),
         salary_range_end: data.salary_range_end.unwrap_or_default(),
-        datetime_created: NaiveDateTime::from_str(chrono::Utc::now().to_rfc3339().as_str())
-            .unwrap_or(NaiveDateTime::default()),
+        datetime_created: chrono::DateTime::parse_from_rfc3339(
+            chrono::Utc::now().to_rfc3339().as_str(),
+        )
+        .map(|dt| dt.naive_utc())
+        .unwrap_or_default(),
         datetime_due,
-        min_ed_lvl: data.min_ed_lvl,
+        min_ed_lvl: data.min_ed_lvl as u8,
     };
 
     let created: Option<Job> = db
@@ -326,9 +505,10 @@ pub async fn update_profile(
             serde_json::to_string(skills).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         updates.push(format!("skills = {}", skills_json));
     }
-    if let Some(education) = &data.education {
+    if let Some(education) = data.education {
+        let edu_vec: Vec<Education> = education.into_iter().map(Education::from).collect();
         let edu_json =
-            serde_json::to_string(education).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            serde_json::to_string(&edu_vec).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         updates.push(format!("education = {}", edu_json));
     }
     if let Some(current_work) = &data.current_work {

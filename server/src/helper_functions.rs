@@ -1,5 +1,4 @@
 use crate::data_structures::Claims;
-use crate::data_structures::EduLevel;
 use crate::data_structures::User;
 use axum::http::StatusCode;
 use bcrypt::{DEFAULT_COST, hash, verify};
@@ -33,7 +32,7 @@ pub fn encode_jwt(uid: String) -> Result<String, StatusCode> {
 pub async fn get_skills_eduinfo_from_uid(
     uid: String,
     db: &Surreal<Db>,
-) -> Result<(Option<Vec<String>>, Option<Vec<(EduLevel, String)>>), StatusCode> {
+) -> Result<(Option<Vec<String>>, Option<Vec<(u8, String)>>), StatusCode> {
     let users: Vec<User> = db
         .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", uid))
@@ -44,14 +43,28 @@ pub async fn get_skills_eduinfo_from_uid(
 
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
 
-    if user.education.as_deref().is_none_or(|e| e.is_empty()) {
-        return Ok((user.skills.clone(), None));
-    }
+    if user.education.as_deref().is_none_or(|e| e.is_empty())
+        && user.skills.as_deref().is_none_or(|e| e.is_empty())
+    {
+        Ok((None, None))
+    } else if user.education.as_deref().is_none_or(|e| e.is_empty())
+        && user.skills.as_deref().is_none_or(|e| !e.is_empty())
+    {
+        Ok((user.skills.clone(), None))
+    } else if user.education.as_deref().is_none_or(|e| !e.is_empty())
+        && user.skills.as_deref().is_none_or(|e| e.is_empty())
+    {
+        let mut edu_info: Vec<(u8, String)> = Vec::new();
+        for e in user.education.as_ref().unwrap() {
+            edu_info.push((e.education, e.major.clone()));
+        }
+        Ok((None, Some(edu_info)))
+    } else {
+        let mut edu_info: Vec<(u8, String)> = Vec::new();
+        for e in user.education.as_ref().unwrap() {
+            edu_info.push((e.education, e.major.clone()));
+        }
 
-    let mut edu_info: Vec<(EduLevel, String)> = Vec::new();
-    for e in user.education.as_ref().unwrap() {
-        edu_info.push((e.education.clone(), e.major.clone()));
+        Ok((user.skills.clone(), Some(edu_info)))
     }
-
-    Ok((user.skills.clone(), Some(edu_info)))
 }
