@@ -76,7 +76,7 @@ where
     serializer.serialize_str(&level.to_string())
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Education {
     #[serde(
         serialize_with = "serialize_edu_level",
@@ -105,7 +105,7 @@ pub struct TokenResponse {
     pub token: String,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct UserProfile {
     pub id: String,
     pub uid: String,
@@ -114,6 +114,15 @@ pub struct UserProfile {
     pub email: String,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "mode", content = "payload")]
+pub enum DashboardResponse {
+    #[serde(rename = "jobs")]
+    Jobs(Vec<JobsData>),
+    #[serde(rename = "candidates")]
+    Candidates(Vec<UserProfile>),
 }
 
 #[derive(Deserialize)]
@@ -141,7 +150,7 @@ pub struct Claims {
     pub iat: usize,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Option<RecordId>,
     // TODO: add PFP support
@@ -156,7 +165,7 @@ pub struct User {
     pub previous_experience: Option<Vec<Work>>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Work {
     pub worked_as: String,
     pub company: String,

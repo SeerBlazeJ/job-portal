@@ -88,11 +88,46 @@ pub async fn signin(
     }
 }
 
-pub async fn get_jobs(
+pub async fn home(
     State(db): State<Surreal<Db>>,
     Extension(claims): Extension<Claims>,
-) -> Result<Json<Vec<JobsData>>, StatusCode> {
-    let (skills_vec, edu_info_vec) = get_skills_eduinfo_from_uid(claims.uid, &db).await?;
+) -> Result<Json<DashboardResponse>, StatusCode> {
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    if user.is_finding_job {
+        let (skills_vec, edu_info_vec) = get_edu_skill_info(&user).await?;
+        let jobs: Vec<JobsData> = get_jobs_data(skills_vec, edu_info_vec, &db).await?;
+        Ok(Json(DashboardResponse::Jobs(jobs)))
+    } else {
+        let sql = "SELECT * FROM User WHERE is_finding_job = true";
+        let mut response = db
+            .query(sql)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let candidates: Vec<User> = response
+            .take(0)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let candidates_data = candidates
+            .into_iter()
+            .map(|c| UserProfile {
+                id: c.id.map(|c| c.to_string()).unwrap(),
+                education: c.education,
+                email: c.email,
+                is_finding_job: c.is_finding_job,
+                name: c.name,
+                skills: c.skills,
+                uid: c.uid,
+            })
+            .collect();
+        Ok(Json(DashboardResponse::Candidates(candidates_data)))
+    }
+}
+
+async fn get_jobs_data(
+    skills_vec: Option<Vec<String>>,
+    edu_info_vec: Option<Vec<(u8, String)>>,
+    db: &Surreal<Db>,
+) -> Result<Vec<JobsData>, StatusCode> {
     let mut unique_jobs: HashMap<String, (Job, f32)> = HashMap::new(); // (Job, score)
 
     match (skills_vec, edu_info_vec) {
@@ -367,7 +402,7 @@ pub async fn get_jobs(
     let results = futures::future::join_all(futures).await;
     let jobs_data: Vec<JobsData> = results.into_iter().filter_map(|r| r.ok()).collect();
 
-    Ok(Json(jobs_data))
+    Ok(jobs_data)
 }
 
 fn calculate_skill_match_score(user_skills: &[String], job_skills: &[String]) -> f32 {

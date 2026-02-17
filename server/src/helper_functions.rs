@@ -29,10 +29,7 @@ pub fn encode_jwt(uid: String) -> Result<String, StatusCode> {
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-pub async fn get_skills_eduinfo_from_uid(
-    uid: String,
-    db: &Surreal<Db>,
-) -> Result<(Option<Vec<String>>, Option<Vec<(u8, String)>>), StatusCode> {
+pub async fn get_user_from_uid(uid: String, db: &Surreal<Db>) -> Result<User, StatusCode> {
     let users: Vec<User> = db
         .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", uid))
@@ -42,7 +39,12 @@ pub async fn get_skills_eduinfo_from_uid(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+    Ok(user.to_owned())
+}
 
+pub async fn get_edu_skill_info(
+    user: &User,
+) -> Result<(Option<Vec<String>>, Option<Vec<(u8, String)>>), StatusCode> {
     if user.education.as_deref().is_none_or(|e| e.is_empty())
         && user.skills.as_deref().is_none_or(|e| e.is_empty())
     {
