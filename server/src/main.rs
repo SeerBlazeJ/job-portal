@@ -13,6 +13,18 @@ use axum::{
 use surrealdb::{Surreal, engine::local::RocksDb};
 use tower_http::cors::{Any, CorsLayer};
 
+/*
+TODO:
+Implement Profile Views
+Implement Company Profiles
+Implement Job Applications
+Implement search
+Implement File handlers (resume, pfp, posts)
+Implement Chat System
+Implement Filters
+Implement Agentic features + AI based job finding
+*/
+
 #[tokio::main]
 async fn main() {
     let db = Surreal::new::<RocksDb>("Job_Portal")
@@ -34,6 +46,7 @@ async fn main() {
     // Protected routes (auth required)
     let protected_routes = Router::new()
         .route("/profile", get(get_profile))
+        .route("/user-profile/{uid}", get(get_user_info))
         .route("/update-profile", post(update_profile))
         .route("/get-jobs", post(home))
         .route("/create-job", post(create_job))

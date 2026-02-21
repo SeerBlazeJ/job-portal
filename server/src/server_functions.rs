@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
+use axum::extract::Path;
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -10,8 +11,8 @@ use axum::{
 };
 use chrono::NaiveDateTime;
 use jsonwebtoken::{DecodingKey, Validation, decode};
-use surrealdb::Surreal;
 use surrealdb::engine::local::Db;
+use surrealdb::{RecordId, Surreal};
 
 use crate::data_structures::*;
 use crate::helper_functions::*;
@@ -28,16 +29,7 @@ pub async fn get_profile(
         .take(0)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
-    let id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    Ok(Json(UserProfile {
-        id: id.to_string(),
-        uid: user.uid,
-        name: user.name,
-        email: user.email,
-        is_finding_job: user.is_finding_job,
-        education: user.education,
-        skills: user.skills,
-    }))
+    Ok(Json(UserProfile::from(user)))
 }
 
 pub async fn signup(
@@ -107,19 +99,24 @@ pub async fn home(
         let candidates: Vec<User> = response
             .take(0)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let candidates_data = candidates
-            .into_iter()
-            .map(|c| UserProfile {
-                id: c.id.map(|c| c.to_string()).unwrap(),
-                education: c.education,
-                email: c.email,
-                is_finding_job: c.is_finding_job,
-                name: c.name,
-                skills: c.skills,
-                uid: c.uid,
-            })
-            .collect();
+        let candidates_data = candidates.into_iter().map(UserProfile::from).collect();
         Ok(Json(DashboardResponse::Candidates(candidates_data)))
+    }
+}
+
+pub async fn get_user_info(
+    State(db): State<Surreal<Db>>,
+    Path(uid): Path<String>,
+) -> Result<Json<UserProfile>, StatusCode> {
+    let uid: RecordId = RecordId::from_str(&uid).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user: Option<User> = db
+        .select(uid)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    match user {
+        Some(profile) => Ok(Json(UserProfile::from(profile))),
+        None => Err(StatusCode::NOT_FOUND),
     }
 }
 
@@ -384,6 +381,7 @@ async fn get_jobs_data(
             Ok::<JobsData, StatusCode>(JobsData {
                 id: job.id.unwrap().to_string(),
                 employer_name: name.unwrap_or_default(),
+                employer_id: job.employer_id.to_string(),
                 title: job.title,
                 description: job.description,
                 skills_required: job.skills_required,
@@ -579,15 +577,6 @@ pub async fn update_profile(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let updated_user = updated_users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
-    let id = updated_user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(UserProfile {
-        id: id.to_string(),
-        uid: updated_user.uid,
-        name: updated_user.name,
-        email: updated_user.email,
-        is_finding_job: updated_user.is_finding_job,
-        education: updated_user.education,
-        skills: updated_user.skills,
-    }))
+    Ok(Json(UserProfile::from(updated_user)))
 }

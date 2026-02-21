@@ -105,7 +105,7 @@ pub struct TokenResponse {
     pub token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserProfile {
     pub id: String,
     pub uid: String,
@@ -186,6 +186,7 @@ pub struct JobsData {
     pub id: String,
     pub employer_name: String,
     pub title: String,
+    pub employer_id: String,
     // pub company_id: RecordId, // Left for later implementation
     // TODO: Add support for images for posts
     pub description: String,
@@ -238,6 +239,20 @@ impl From<EducationUpdateRequest> for Education {
             education: value.education as u8,
             major: value.major,
             edu_institution: value.edu_institution,
+        }
+    }
+}
+
+impl From<User> for UserProfile {
+    fn from(c: User) -> Self {
+        Self {
+            id: c.id.map(|c| c.to_string()).unwrap(),
+            education: c.education,
+            email: c.email,
+            is_finding_job: c.is_finding_job,
+            name: c.name,
+            skills: c.skills,
+            uid: c.uid,
         }
     }
 }

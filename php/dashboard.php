@@ -273,7 +273,9 @@ if ($apiResult['success']) {
             <div class="user-info">
             <span class="username">Welcome, <?php echo htmlspecialchars($userName); ?>!</span>
             <a href="profile.php" class="btn-create-job">👤 Profile</a>
+            <?php if($dashboardMode === 'candidates'):?>
             <a href="create_job.php" class="btn-create-job">+ Create Job</a>
+            <?php endif ?>
             <form action="logout.php" method="POST" style="margin: 0;">
                 <button type="submit" class="logout-btn">Logout</button>
             </form>
@@ -305,7 +307,11 @@ if ($apiResult['success']) {
                     <?php foreach ($dashboardData as $job): ?>
                         <div class="job-card">
                             <h3><?php echo htmlspecialchars($job['title']); ?></h3>
-                            <div class="employer">🏢 <?php echo htmlspecialchars($job['employer_name']); ?></div>
+                            <div class="employer">
+                                    🏢 <a href="user_details.php?id=<?php echo urlencode($job['employer_id'] ?? ''); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
+                                        <?php echo htmlspecialchars($job['employer_name']); ?>
+                                    </a>
+                                </div>
                             <div class="description"><?php echo htmlspecialchars($job['description']); ?></div>
 
                             <div class="details">
@@ -331,7 +337,11 @@ if ($apiResult['success']) {
                     <?php foreach ($dashboardData as $candidate): ?>
                         <div class="candidate-card">
                             <span class="section-badge badge-candidate">Job Seeker</span>
-                            <h3><?php echo htmlspecialchars($candidate['name']); ?></h3>
+                                <h3>
+                                    <a href="user_details.php?id=<?php echo urlencode($candidate['id']); ?>" style="text-decoration: none; color: #333;">
+                                        <?php echo htmlspecialchars($candidate['name']); ?>
+                                    </a>
+                                </h3>
                             <span class="email">📧 <?php echo htmlspecialchars($candidate['email']); ?></span>
 
                             <?php if (!empty($candidate['education'])): ?>
