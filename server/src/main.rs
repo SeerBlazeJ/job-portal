@@ -15,13 +15,13 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-Implement Company Profiles
 Implement Job Applications
 Implement search
 Implement File handlers (resume, pfp, posts)
 Implement Chat System
 Implement Filters
 Implement Agentic features + AI based job finding
+Implement Company Profiles
 */
 
 #[tokio::main]
@@ -49,6 +49,9 @@ async fn main() {
         .route("/update-profile", post(update_profile))
         .route("/get-jobs", post(home))
         .route("/create-job", post(create_job))
+        .route("/my-jobs", get(get_my_jobs))
+        .route("/job-applicants/{job_id}", get(get_job_applicants))
+        .route("/apply", post(apply_for_job))
         .route_layer(middleware::from_fn(auth_middleware));
 
     // Combine them

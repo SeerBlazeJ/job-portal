@@ -79,7 +79,6 @@ pub async fn signin(
         false => Err(StatusCode::UNAUTHORIZED),
     }
 }
-
 pub async fn home(
     State(db): State<Surreal<Db>>,
     Extension(claims): Extension<Claims>,
@@ -87,7 +86,26 @@ pub async fn home(
     let user = get_user_from_uid(claims.uid, &db).await?;
     if user.is_finding_job {
         let (skills_vec, edu_info_vec) = get_edu_skill_info(&user).await?;
-        let jobs: Vec<JobsData> = get_jobs_data(skills_vec, edu_info_vec, &db).await?;
+        let mut jobs: Vec<JobsData> = get_jobs_data(skills_vec, edu_info_vec, &db).await?;
+
+        // NEW: Fetch applied job IDs for this user to update UI state
+        if let Some(user_id) = &user.id {
+            let mut response = db
+                .query("SELECT * FROM applied_for WHERE in = $uid")
+                .bind(("uid", user_id.clone()))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let applied: Vec<Application> = response.take(0).unwrap_or_default();
+            let applied_ids: HashSet<String> =
+                applied.into_iter().map(|a| a.out.to_string()).collect();
+
+            // Set the state for the frontend
+            for job in jobs.iter_mut() {
+                job.has_applied = Some(applied_ids.contains(&job.id));
+            }
+        }
+
         Ok(Json(DashboardResponse::Jobs(jobs)))
     } else {
         let sql = "SELECT * FROM User WHERE is_finding_job = true";
@@ -393,6 +411,7 @@ async fn get_jobs_data(
                 datetime_created: job.datetime_created,
                 datetime_due: job.datetime_due,
                 min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
+                has_applied: None,
             })
         }
     });
@@ -579,4 +598,149 @@ pub async fn update_profile(
     let updated_user = updated_users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
 
     Ok(Json(UserProfile::from(updated_user)))
+}
+
+pub async fn apply_for_job(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<ApplicationRequest>,
+) -> Result<StatusCode, StatusCode> {
+    // 1. Get the current user's RecordId
+    let users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", claims.uid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+    let user_record_id = user.id.clone().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // 2. Parse the target job and employer IDs
+    let job_record_id = RecordId::from_str(&data.job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let employer_record_id =
+        RecordId::from_str(&data.employer_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // 3. Prepare edge data
+    let datetime_applied = chrono::Utc::now().to_rfc3339();
+    let status = "pending".to_string();
+
+    // 4. Execute the RELATE query
+    // Replace "applied_for" with the actual name of your edge table
+    let sql = "RELATE $applicant->applied_for->$job
+               SET datetime_applied = $datetime,
+                   employer_id = $employer,
+                   status = $status;";
+
+    let mut response = db
+        .query(sql)
+        .bind(("applicant", user_record_id))
+        .bind(("job", job_record_id))
+        .bind(("datetime", datetime_applied))
+        .bind(("employer", employer_record_id))
+        .bind(("status", status))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Optional: Verify creation
+    let created: Option<Application> = response
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    match created {
+        Some(_) => Ok(StatusCode::ACCEPTED),
+        None => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+use crate::data_structures::ApplicantData;
+
+pub async fn get_my_jobs(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<JobsData>>, StatusCode> {
+    let users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", claims.uid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
+    let user_id = user.id.clone().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut result = db
+        .query("SELECT * FROM jobs WHERE employer_id = $emp_id ORDER BY datetime_created DESC")
+        .bind(("emp_id", user_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let jobs: Vec<Job> = result
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Convert to JobsData so the ID safely becomes a string for the frontend
+    let employer_name = user.name.clone();
+    let jobs_data: Vec<JobsData> = jobs
+        .into_iter()
+        .map(|job| JobsData {
+            id: job.id.unwrap().to_string(),
+            employer_name: employer_name.clone(),
+            employer_id: job.employer_id.to_string(),
+            title: job.title,
+            description: job.description,
+            skills_required: job.skills_required,
+            majors_accepted: job.majors_accepted,
+            location: job.location,
+            is_active: job.is_active,
+            salary_range_start: job.salary_range_start,
+            salary_range_end: job.salary_range_end,
+            datetime_created: job.datetime_created,
+            datetime_due: job.datetime_due,
+            min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
+            has_applied: None,
+        })
+        .collect();
+
+    Ok(Json(jobs_data))
+}
+
+pub async fn get_job_applicants(
+    State(db): State<Surreal<Db>>,
+    Path(job_id): Path<String>,
+    Extension(_claims): Extension<Claims>,
+) -> Result<Json<Vec<ApplicantData>>, StatusCode> {
+    let job_record_id = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let mut result = db
+        .query("SELECT * FROM applied_for WHERE out = $job_id")
+        .bind(("job_id", job_record_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let applications: Vec<Application> = result
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut applicants = Vec::new();
+    for app in applications {
+        let mut u_res = db
+            .query("SELECT * FROM User WHERE id = $uid")
+            .bind(("uid", app.applicant.clone()))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let users: Vec<User> = u_res.take(0).unwrap_or_default();
+        if let Some(u) = users.into_iter().next() {
+            applicants.push(ApplicantData {
+                user: UserProfile::from(u),
+                datetime_applied: app.datetime_applied,
+                status: app.status,
+            });
+        }
+    }
+
+    Ok(Json(applicants))
 }

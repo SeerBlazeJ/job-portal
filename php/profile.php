@@ -189,6 +189,14 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
         .status-poster { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .empty-state { color: #999; font-style: italic; }
         .edu-level-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #667eea; color: white; }
+        .profile-tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
+        .profile-tab { padding: 12px 25px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .profile-tab:hover { color: #667eea; }
+        .profile-tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .posted-job-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+        .applicant-card { background: white; border: 1px solid #ddd; border-left: 4px solid #667eea; border-radius: 6px; padding: 15px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -202,16 +210,21 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
 
         <div class="profile-container">
             <div class="profile-header">
-                <h2>Profile Information</h2>
+                <h2>Manage Account</h2>
                 <div class="nav-links">
                     <button id="edit-btn" class="btn btn-edit view-mode">✏️ Edit Profile</button>
                     <button id="cancel-btn" class="btn btn-cancel edit-mode">✖ Cancel</button>
                 </div>
             </div>
 
+            <div class="profile-tabs view-mode">
+                <div class="profile-tab active" onclick="switchTab('profile')">Profile Info</div>
+                <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')" style="display: <?php echo $profile['is_finding_job'] ? 'none' : 'block'; ?>;">My Posted Jobs</div>
+            </div>
+
             <div id="alert" class="alert"></div>
 
-            <div id="view-mode" class="view-mode">
+            <div id="view-mode" class="view-mode tab-content active">
                 <div class="profile-section">
                     <h3>📋 Basic Information</h3>
                     <div class="info-grid">
@@ -296,6 +309,12 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
                     <?php else: ?>
                         <p class="empty-state">No education records added yet</p>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <div id="content-jobs" class="view-mode tab-content">
+                <div id="my-jobs-list">
+                    <p>Loading your job posts...</p>
                 </div>
             </div>
 
@@ -387,6 +406,115 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             { value: 'PhD', label: 'PhD/Doctorate' }
         ];
 
+        // Tab Switcher Logic
+        function switchTab(tab) {
+            document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (tab === 'profile') {
+                document.querySelector('.profile-tab:nth-child(1)').classList.add('active');
+                document.getElementById('view-mode').classList.add('active');
+            } else {
+                document.getElementById('tab-my-jobs').classList.add('active');
+                document.getElementById('content-jobs').classList.add('active');
+                loadMyJobs();
+            }
+        }
+
+        // Fetch and Render Jobs
+        async function loadMyJobs() {
+            const container = document.getElementById('my-jobs-list');
+            try {
+                const res = await fetch('employer_api.php?action=my_jobs');
+                const result = await res.json();
+
+                if (result.success && result.data) {
+                    if (result.data.length === 0) {
+                        container.innerHTML = '<p class="empty-state">You haven\'t posted any jobs yet.</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    result.data.forEach(job => {
+                        html += `
+                            <div class="posted-job-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h3 style="color:#333; margin:0;">${job.title}</h3>
+                                    <button class="btn btn-secondary" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
+                                </div>
+                                <p style="color:#666; font-size:14px; margin-top:8px;">📍 ${job.location} | 💰 $${job.salary_range_start} - $${job.salary_range_end}</p>
+                                <div id="applicants-${job.id}" style="display:none; margin-top: 20px; border-top: 2px dashed #e0e0e0; padding-top: 20px;">
+                                    <p>Loading applicants...</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<p class="empty-state">Failed to load jobs.</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p class="empty-state">Error loading jobs.</p>';
+            }
+        }
+
+        // Fetch and Render Applicants for a specific job
+        async function toggleApplicants(jobId, btn) {
+            const container = document.getElementById(`applicants-${jobId}`);
+
+            if (container.style.display === 'block') {
+                container.style.display = 'none';
+                btn.textContent = 'View Applicants';
+                btn.classList.replace('btn-cancel', 'btn-secondary');
+                return;
+            }
+
+            container.style.display = 'block';
+            btn.textContent = 'Hide Applicants';
+            btn.classList.replace('btn-secondary', 'btn-cancel');
+            container.innerHTML = '<p>Loading applicants...</p>';
+
+            try {
+                const res = await fetch('employer_api.php?action=applicants&job_id=' + encodeURIComponent(jobId));
+                const result = await res.json();
+
+                if (result.success && result.data) {
+                    if (result.data.length === 0) {
+                        container.innerHTML = '<p class="empty-state" style="margin:0;">No one has applied to this position yet.</p>';
+                        return;
+                    }
+
+                    let html = `<h4 style="margin-bottom: 10px; color:#667eea;">${result.data.length} Applicant(s)</h4>`;
+                    result.data.forEach(app => {
+                        // Formatting the ISO datetime string
+                        const dateObj = new Date(app.datetime_applied);
+                        const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
+
+                        html += `
+                            <div class="applicant-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="font-size: 16px;">${app.user.name}</strong>
+                                    <span style="font-size:12px; font-weight:bold; background:#e2e8f0; color:#4a5568; padding:4px 10px; border-radius:12px; text-transform:uppercase;">${app.status}</span>
+                                </div>
+                                <div style="font-size:14px; color:#555; margin-top:8px;">
+                                    📧 <a href="mailto:${app.user.email}" style="color:#667eea; text-decoration:none;">${app.user.email}</a>
+                                    <br>🕒 Applied on ${prettyDate}
+                                </div>
+                                <div style="margin-top:12px;">
+                                    <a href="user_details.php?id=${encodeURIComponent(app.user.id)}" target="_blank" class="btn" style="background:#667eea; color:white; padding:8px 15px; font-size:13px;">View Full Profile ↗</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<p class="empty-state">Failed to load applicants.</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p class="empty-state">Error loading applicants.</p>';
+            }
+        }
+
         function updateToggleLabels() {
             const checkbox = document.getElementById('is_finding_job');
             document.getElementById('label-seeker').classList.toggle('active', checkbox.checked);
@@ -473,7 +601,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
                 return;
             }
             previousExperience.forEach((exp, index) => {
-                // Rely completely on PHP-injected values
                 const months = exp.exp_m || 0;
                 const days = exp.exp_d || 0;
 
@@ -593,7 +720,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Javascript only sends raw inputs, PHP will process them
             let cwData = null;
             if (document.getElementById('has_current_work').checked) {
                 cwData = {

@@ -200,6 +200,7 @@ pub struct JobsData {
     pub datetime_created: NaiveDateTime,
     pub datetime_due: Option<NaiveDateTime>,
     pub min_ed_lvl: EduLevel,
+    pub has_applied: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -230,6 +231,30 @@ pub struct Job {
     pub datetime_created: NaiveDateTime,
     pub datetime_due: Option<NaiveDateTime>,
     pub min_ed_lvl: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Application {
+    pub id: Option<RecordId>,
+    #[serde(rename = "in")]
+    pub applicant: RecordId,
+    pub out: RecordId,
+    pub employer_id: RecordId,
+    pub datetime_applied: String,
+    pub status: String,
+}
+
+#[derive(Serialize)]
+pub struct ApplicantData {
+    pub user: UserProfile,
+    pub datetime_applied: String,
+    pub status: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ApplicationRequest {
+    pub job_id: String,
+    pub employer_id: String,
 }
 
 impl From<EducationUpdateRequest> for Education {
