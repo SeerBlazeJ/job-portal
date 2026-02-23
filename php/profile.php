@@ -2,13 +2,26 @@
 // profile.php
 require_once 'config.php';
 
-// Check authentication
 if (!isAuthenticated()) {
     header('Location: signin.php');
     exit;
 }
 
-// Get JWT token
+// PHP formats the display string
+function formatExp($days) {
+    if ($days === null || $days === '') return 'N/A';
+
+    $days = (int)$days;
+    $months = floor($days / 30);
+    $rem_days = $days % 30;
+
+    $parts = [];
+    if ($months > 0) $parts[] = "{$months}m";
+    if ($rem_days > 0) $parts[] = "{$rem_days}d";
+
+    return empty($parts) ? "0d" : implode(' ', $parts);
+}
+
 $token = getJWTToken();
 
 // Handle POST request (profile update)
@@ -16,8 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
 
     $input = json_decode(file_get_contents('php://input'), true);
-
-    // Prepare update data (only include provided fields)
     $updateData = [];
 
     if (isset($input['name']) && !empty(trim($input['name']))) {
@@ -26,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($input['email']) && !empty(trim($input['email']))) {
         $updateData['email'] = trim($input['email']);
     }
-    // Update logic: Checkbox/Toggle value boolean
     if (isset($input['is_finding_job'])) {
         $updateData['is_finding_job'] = (bool)$input['is_finding_job'];
     }
@@ -34,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updateData['skills'] = array_values(array_filter($input['skills']));
     }
     if (isset($input['education']) && is_array($input['education'])) {
-        // Validate and format education data
         $educationData = [];
         foreach ($input['education'] as $edu) {
             if (!empty($edu['education']) && !empty($edu['major']) && !empty($edu['edu_institution'])) {
@@ -48,33 +57,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updateData['education'] = $educationData;
     }
 
+    // PHP calculates the Total Days for Rust
+    if (array_key_exists('current_work', $input)) {
+        if (is_array($input['current_work'])) {
+            $m = isset($input['current_work']['exp_m']) ? (int)$input['current_work']['exp_m'] : 0;
+            $d = isset($input['current_work']['exp_d']) ? (int)$input['current_work']['exp_d'] : 0;
+            $updateData['current_work'] = [
+                'worked_as' => trim($input['current_work']['worked_as']),
+                'company' => trim($input['current_work']['company']),
+                'exp' => ($m * 30) + $d // Processed purely in PHP
+            ];
+        } else {
+            $updateData['current_work'] = null;
+        }
+    }
+
+    if (array_key_exists('previous_experience', $input)) {
+        if (is_array($input['previous_experience'])) {
+            $expData = [];
+            foreach ($input['previous_experience'] as $work) {
+                if (!empty($work['worked_as']) && !empty($work['company'])) {
+                    $m = isset($work['exp_m']) ? (int)$work['exp_m'] : 0;
+                    $d = isset($work['exp_d']) ? (int)$work['exp_d'] : 0;
+                    $expData[] = [
+                        'worked_as' => trim($work['worked_as']),
+                        'company' => trim($work['company']),
+                        'exp' => ($m * 30) + $d // Processed purely in PHP
+                    ];
+                }
+            }
+            $updateData['previous_experience'] = $expData;
+        } else {
+            $updateData['previous_experience'] = null;
+        }
+    }
+
     if (empty($updateData)) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'No fields to update'
-        ]);
+        echo json_encode(['status' => 'error', 'message' => 'No fields to update']);
         exit;
     }
 
-    // Call Rust API
     $result = callRustAPI('/update-profile', 'POST', $updateData, $token);
 
     if ($result['success']) {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Profile updated successfully!',
-            'data' => $result['data']
-        ]);
+        echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully!', 'data' => $result['data']]);
     } else {
-        echo json_encode([
-            'status' => 'error',
-            'message' => $result['message']
-        ]);
+        echo json_encode(['status' => 'error', 'message' => $result['message']]);
     }
     exit;
 }
 
-// GET request - fetch profile and show page
 $profileResult = callRustAPI('/profile', 'GET', null, $token);
 
 if (!$profileResult['success']) {
@@ -84,6 +116,21 @@ if (!$profileResult['success']) {
 }
 
 $profile = $profileResult['data'];
+
+// PHP pre-processes total days into separate months/days for the JavaScript state
+if (isset($profile['current_work']) && is_array($profile['current_work'])) {
+    $totalDays = (int)($profile['current_work']['exp'] ?? 0);
+    $profile['current_work']['exp_m'] = floor($totalDays / 30);
+    $profile['current_work']['exp_d'] = $totalDays % 30;
+}
+
+if (isset($profile['previous_experience']) && is_array($profile['previous_experience'])) {
+    foreach ($profile['previous_experience'] as &$exp) {
+        $totalDays = (int)($exp['exp'] ?? 0);
+        $exp['exp_m'] = floor($totalDays / 30);
+        $exp['exp_d'] = $totalDays % 30;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -92,417 +139,56 @@ $profile = $profileResult['data'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - Job Portal</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 28px;
-        }
-
-        .header .nav-links {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            border: none;
-            transition: all 0.3s;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .profile-container {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .profile-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .profile-header h2 {
-            color: #333;
-            font-size: 24px;
-        }
-
-        .btn-edit {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-edit:hover {
-            background: #5568d3;
-        }
-
-        .btn-cancel {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-cancel:hover {
-            background: #5a6268;
-        }
-
-        .profile-section {
-            margin-bottom: 30px;
-        }
-
-        .profile-section h3 {
-            color: #667eea;
-            font-size: 18px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 200px 1fr;
-            gap: 15px;
-            align-items: start;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #555;
-        }
-
-        .info-value {
-            color: #333;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-            font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        /* Toggle Switch Styles */
-        .toggle-switch-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 5px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 30px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 34px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 22px;
-            width: 22px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #667eea;
-        }
-
-        input:focus + .slider {
-            box-shadow: 0 0 1px #667eea;
-        }
-
-        input:checked + .slider:before {
-            -webkit-transform: translateX(30px);
-            -ms-transform: translateX(30px);
-            transform: translateX(30px);
-        }
-
-        .toggle-label {
-            font-size: 14px;
-            color: #999;
-            font-weight: 600;
-            transition: color 0.3s;
-            cursor: pointer;
-        }
-
-        .toggle-label.active {
-            color: #333;
-        }
-
-        /* Skills & Education Styles */
-        .skills-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .skill-tag {
-            background: #667eea;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .skill-tag-remove {
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .tags-display {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-            min-height: 40px;
-            padding: 10px;
-            border: 2px dashed #e0e0e0;
-            border-radius: 5px;
-        }
-
-        .education-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-        }
-
-        .education-item strong {
-            color: #667eea;
-        }
-
-        .education-form-item {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            position: relative;
-        }
-
-        .education-form-item .remove-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.3s;
-        }
-
-        .education-form-item .remove-btn:hover {
-            background: #c82333;
-        }
-
-        .btn-add {
-            background: #28a745;
-            color: white;
-            padding: 10px 20px;
-            margin-top: 10px;
-        }
-
-        .btn-add:hover {
-            background: #218838;
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            margin-top: 20px;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .edit-mode {
-            display: none;
-        }
-
-        .view-mode {
-            display: block;
-        }
-
-        .helper-text {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status-poster {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-
-        .empty-state {
-            color: #999;
-            font-style: italic;
-        }
-
-        .edu-level-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #667eea;
-            color: white;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { color: #333; font-size: 28px; }
+        .header .nav-links { display: flex; gap: 15px; align-items: center; }
+        .btn { padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.3s; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .profile-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .profile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
+        .btn-edit { background: #667eea; color: white; }
+        .btn-cancel { background: #6c757d; color: white; }
+        .profile-section { margin-bottom: 30px; }
+        .profile-section h3 { color: #667eea; font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 15px; align-items: start; }
+        .info-label { font-weight: 600; color: #555; }
+        .info-value { color: #333; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; }
+        .toggle-switch-container { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 30px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #667eea; }
+        input:checked + .slider:before { transform: translateX(30px); }
+        .toggle-label { font-size: 14px; color: #999; font-weight: 600; cursor: pointer; }
+        .toggle-label.active { color: #333; }
+        .skills-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        .skill-tag { background: #667eea; color: white; padding: 8px 15px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .skill-tag-remove { cursor: pointer; font-weight: bold; font-size: 18px; }
+        .tags-display { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; padding: 10px; border: 2px dashed #e0e0e0; border-radius: 5px; }
+        .education-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+        .education-form-item { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0; position: relative; }
+        .education-form-item .remove-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px; font-weight: bold; }
+        .btn-add { background: #28a745; color: white; padding: 10px 20px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer;}
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; }
+        .alert.show { display: block; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 20px; border: none; border-radius: 5px; cursor: pointer;}
+        .edit-mode { display: none; }
+        .view-mode { display: block; }
+        .helper-text { font-size: 12px; color: #666; margin-top: 5px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+        .status-active { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-poster { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .empty-state { color: #999; font-style: italic; }
+        .edu-level-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #667eea; color: white; }
     </style>
 </head>
 <body>
@@ -531,13 +217,10 @@ $profile = $profileResult['data'];
                     <div class="info-grid">
                         <div class="info-label">Username:</div>
                         <div class="info-value"><?php echo htmlspecialchars($profile['uid']); ?></div>
-
                         <div class="info-label">Name:</div>
                         <div class="info-value"><?php echo htmlspecialchars($profile['name']); ?></div>
-
                         <div class="info-label">Email:</div>
                         <div class="info-value"><?php echo htmlspecialchars($profile['email']); ?></div>
-
                         <div class="info-label">Account Role:</div>
                         <div class="info-value">
                             <?php if ($profile['is_finding_job']): ?>
@@ -559,6 +242,40 @@ $profile = $profileResult['data'];
                         </div>
                     <?php else: ?>
                         <p class="empty-state">No skills added yet</p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="profile-section">
+                    <h3>💼 Work Experience</h3>
+                    <?php if (!empty($profile['current_work'])): ?>
+                        <div class="education-item" style="border-left-color: #28a745;">
+                            <div>
+                                <span class="edu-level-badge" style="background: #28a745;">Current Role</span>
+                                <strong style="margin-left: 10px;"><?php echo htmlspecialchars($profile['current_work']['worked_as']); ?></strong>
+                            </div>
+                            <div style="margin-top: 8px;">
+                                🏢 <?php echo htmlspecialchars($profile['current_work']['company']); ?>
+                                • ⏱️ <?php echo formatExp($profile['current_work']['exp']); ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($profile['previous_experience'])): ?>
+                        <?php foreach ($profile['previous_experience'] as $exp): ?>
+                            <div class="education-item">
+                                <div>
+                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars($exp['worked_as']); ?></strong>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    🏢 <?php echo htmlspecialchars($exp['company']); ?>
+                                    • ⏱️ <?php echo formatExp($exp['exp']); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
+                    <?php if (empty($profile['current_work']) && empty($profile['previous_experience'])): ?>
+                        <p class="empty-state">No work experience records added yet</p>
                     <?php endif; ?>
                 </div>
 
@@ -586,30 +303,24 @@ $profile = $profileResult['data'];
                 <form id="profile-form">
                     <div class="profile-section">
                         <h3>📋 Basic Information</h3>
-
                         <div class="form-group">
                             <label for="name">Name *</label>
                             <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($profile['name']); ?>" required>
                         </div>
-
                         <div class="form-group">
                             <label for="email">Email *</label>
                             <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($profile['email']); ?>" required>
                         </div>
-
                         <div class="form-group">
                             <label>Primary Role</label>
                             <div class="toggle-switch-container">
                                 <span class="toggle-label <?php echo !$profile['is_finding_job'] ? 'active' : ''; ?>" id="label-poster">Job Poster</span>
                                 <label class="switch">
-                                    <input type="checkbox" id="is_finding_job" name="is_finding_job"
-                                        <?php echo $profile['is_finding_job'] ? 'checked' : ''; ?>
-                                        onchange="updateToggleLabels()">
+                                    <input type="checkbox" id="is_finding_job" name="is_finding_job" <?php echo $profile['is_finding_job'] ? 'checked' : ''; ?> onchange="updateToggleLabels()">
                                     <span class="slider round"></span>
                                 </label>
                                 <span class="toggle-label <?php echo $profile['is_finding_job'] ? 'active' : ''; ?>" id="label-seeker">Job Seeker</span>
                             </div>
-                            <div class="helper-text">Switch to "Job Poster" if you intend to post jobs. Switch to "Job Seeker" to find jobs.</div>
                         </div>
                     </div>
 
@@ -621,6 +332,19 @@ $profile = $profileResult['data'];
                             <div class="helper-text">Press Enter after typing each skill</div>
                             <div id="skills_tags" class="tags-display"></div>
                         </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>💼 Current Work</h3>
+                        <div id="current-work-container"></div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>🕰️ Previous Experience</h3>
+                        <div id="previous-experience-container"></div>
+                        <button type="button" class="btn btn-add" id="add-experience-btn">
+                            ➕ Add Experience Record
+                        </button>
                     </div>
 
                     <div class="profile-section">
@@ -648,32 +372,12 @@ $profile = $profileResult['data'];
         const saveBtn = document.getElementById('save-btn');
         const alert = document.getElementById('alert');
 
-        // Toggle Switch Logic
-        function updateToggleLabels() {
-            const checkbox = document.getElementById('is_finding_job');
-            const labelPoster = document.getElementById('label-poster');
-            const labelSeeker = document.getElementById('label-seeker');
-
-            if (checkbox.checked) {
-                labelSeeker.classList.add('active');
-                labelPoster.classList.remove('active');
-            } else {
-                labelSeeker.classList.remove('active');
-                labelPoster.classList.add('active');
-            }
-        }
-
-        // Skills management
-        const skillsInput = document.getElementById('skills_input');
-        const skillsTagsContainer = document.getElementById('skills_tags');
+        // Pre-processed data from PHP
         let skills = <?php echo json_encode($profile['skills'] ?? []); ?>;
-
-        // Education management
-        const educationContainer = document.getElementById('education-container');
-        const addEducationBtn = document.getElementById('add-education-btn');
         let educationRecords = <?php echo json_encode($profile['education'] ?? []); ?>;
+        let currentWork = <?php echo json_encode($profile['current_work'] ?? null); ?>;
+        let previousExperience = <?php echo json_encode($profile['previous_experience'] ?? []); ?>;
 
-        // Education levels mapping
         const eduLevels = [
             { value: 'SecondarySchool', label: 'Secondary School' },
             { value: 'HighSchool', label: 'High School' },
@@ -683,13 +387,15 @@ $profile = $profileResult['data'];
             { value: 'PhD', label: 'PhD/Doctorate' }
         ];
 
-        // Initialize displays
-        renderSkills();
-        renderEducation();
-        // Initialize toggle labels
-        updateToggleLabels();
+        function updateToggleLabels() {
+            const checkbox = document.getElementById('is_finding_job');
+            document.getElementById('label-seeker').classList.toggle('active', checkbox.checked);
+            document.getElementById('label-poster').classList.toggle('active', !checkbox.checked);
+        }
 
-        // Skills functions
+        const skillsInput = document.getElementById('skills_input');
+        const skillsTagsContainer = document.getElementById('skills_tags');
+
         skillsInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -707,10 +413,7 @@ $profile = $profileResult['data'];
             skills.forEach((skill, index) => {
                 const tag = document.createElement('div');
                 tag.className = 'skill-tag';
-                tag.innerHTML = `
-                    ${skill}
-                    <span class="skill-tag-remove" onclick="removeSkill(${index})">×</span>
-                `;
+                tag.innerHTML = `${skill} <span class="skill-tag-remove" onclick="removeSkill(${index})">×</span>`;
                 skillsTagsContainer.appendChild(tag);
             });
         }
@@ -720,55 +423,123 @@ $profile = $profileResult['data'];
             renderSkills();
         }
 
-        // Education functions
-        function renderEducation() {
-            educationContainer.innerHTML = '';
+        function renderCurrentWork() {
+            const container = document.getElementById('current-work-container');
+            const hasWork = currentWork !== null;
+            const workedAs = hasWork ? currentWork.worked_as || '' : '';
+            const company = hasWork ? currentWork.company || '' : '';
 
-            if (educationRecords.length === 0) {
-                educationContainer.innerHTML = '<p class="empty-state">No education records. Click "Add Education Record" to add one.</p>';
+            // Rely completely on PHP-injected values
+            const months = hasWork ? currentWork.exp_m || 0 : 0;
+            const days = hasWork ? currentWork.exp_d || 0 : 0;
+
+            container.innerHTML = `
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="display:inline-flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="has_current_work" ${hasWork ? 'checked' : ''} onchange="toggleCurrentWorkFields()" style="width:auto; margin-right:8px;">
+                        I am currently employed
+                    </label>
+                </div>
+                <div id="current-work-fields" style="display: ${hasWork ? 'block' : 'none'};" class="education-form-item">
+                    <div class="form-group">
+                        <label>Job Title (Worked As) *</label>
+                        <input type="text" id="cw_worked_as" value="${workedAs}" placeholder="e.g., Software Engineer">
+                    </div>
+                    <div class="form-group">
+                        <label>Company *</label>
+                        <input type="text" id="cw_company" value="${company}" placeholder="e.g., Google">
+                    </div>
+                    <div class="form-group">
+                        <label>Duration of Experience *</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="cw_exp_m" min="0" value="${months}" placeholder="Months" style="flex: 1;">
+                            <input type="number" id="cw_exp_d" min="0" max="29" value="${days}" placeholder="Days" style="flex: 1;">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.toggleCurrentWorkFields = function() {
+            const checked = document.getElementById('has_current_work').checked;
+            document.getElementById('current-work-fields').style.display = checked ? 'block' : 'none';
+        };
+
+        const prevExpContainer = document.getElementById('previous-experience-container');
+        function renderPreviousExperience() {
+            prevExpContainer.innerHTML = '';
+            if (previousExperience.length === 0) {
+                prevExpContainer.innerHTML = '<p class="empty-state">No previous experience added.</p>';
                 return;
             }
+            previousExperience.forEach((exp, index) => {
+                // Rely completely on PHP-injected values
+                const months = exp.exp_m || 0;
+                const days = exp.exp_d || 0;
 
+                const item = document.createElement('div');
+                item.className = 'education-form-item';
+                item.innerHTML = `
+                    <button type="button" class="remove-btn" onclick="removeExperience(${index})">×</button>
+                    <div class="form-group">
+                        <label>Job Title (Worked As) *</label>
+                        <input type="text" class="exp-worked-as" value="${exp.worked_as || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Company *</label>
+                        <input type="text" class="exp-company" value="${exp.company || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Duration of Experience *</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" class="exp-m" min="0" value="${months}" placeholder="Months" required style="flex: 1;">
+                            <input type="number" class="exp-d" min="0" max="29" value="${days}" placeholder="Days" required style="flex: 1;">
+                        </div>
+                    </div>
+                `;
+                prevExpContainer.appendChild(item);
+            });
+        }
+
+        function removeExperience(index) {
+            previousExperience.splice(index, 1);
+            renderPreviousExperience();
+        }
+
+        document.getElementById('add-experience-btn').addEventListener('click', () => {
+            previousExperience.push({ worked_as: '', company: '', exp_m: 0, exp_d: 0 });
+            renderPreviousExperience();
+        });
+
+        const educationContainer = document.getElementById('education-container');
+        function renderEducation() {
+            educationContainer.innerHTML = '';
+            if (educationRecords.length === 0) {
+                educationContainer.innerHTML = '<p class="empty-state">No education records.</p>';
+                return;
+            }
             educationRecords.forEach((edu, index) => {
-                // FIX START: Convert integer from backend to string for dropdown matching
                 let currentEduValue = edu.education;
-                if (typeof currentEduValue === 'number') {
-                    // Map the integer (e.g., 3) to the string value (e.g., 'Bachelors')
-                    // based on the index in the eduLevels array
-                    if (eduLevels[currentEduValue]) {
-                        currentEduValue = eduLevels[currentEduValue].value;
-                    }
+                if (typeof currentEduValue === 'number' && eduLevels[currentEduValue]) {
+                    currentEduValue = eduLevels[currentEduValue].value;
                 }
-                // FIX END
-
                 const eduItem = document.createElement('div');
                 eduItem.className = 'education-form-item';
                 eduItem.innerHTML = `
                     <button type="button" class="remove-btn" onclick="removeEducation(${index})">×</button>
-
                     <div class="form-group">
                         <label>Education Level *</label>
-                        <select class="edu-level" data-index="${index}" required>
-                            ${eduLevels.map(level => `
-                                <option value="${level.value}" ${currentEduValue === level.value ? 'selected' : ''}>
-                                    ${level.label}
-                                </option>
-                            `).join('')}
+                        <select class="edu-level" required>
+                            ${eduLevels.map(level => `<option value="${level.value}" ${currentEduValue === level.value ? 'selected' : ''}>${level.label}</option>`).join('')}
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label>Major/Field of Study *</label>
-                        <input type="text" class="edu-major" data-index="${index}"
-                            value="${edu.major || ''}"
-                            placeholder="e.g., Computer Science" required>
+                        <input type="text" class="edu-major" value="${edu.major || ''}" required>
                     </div>
-
                     <div class="form-group">
                         <label>Institution Name *</label>
-                        <input type="text" class="edu-institution" data-index="${index}"
-                            value="${edu.edu_institution || ''}"
-                            placeholder="e.g., University of Technology" required>
+                        <input type="text" class="edu-institution" value="${edu.edu_institution || ''}" required>
                     </div>
                 `;
                 educationContainer.appendChild(eduItem);
@@ -780,16 +551,11 @@ $profile = $profileResult['data'];
             renderEducation();
         }
 
-        addEducationBtn.addEventListener('click', () => {
-            educationRecords.push({
-                education: 'Bachelors',
-                major: '',
-                edu_institution: ''
-            });
+        document.getElementById('add-education-btn').addEventListener('click', () => {
+            educationRecords.push({ education: 'Bachelors', major: '', edu_institution: '' });
             renderEducation();
         });
 
-        // Toggle edit mode
         editBtn.addEventListener('click', () => {
             viewMode.style.display = 'none';
             editMode.style.display = 'block';
@@ -804,34 +570,61 @@ $profile = $profileResult['data'];
             cancelBtn.style.display = 'none';
             editBtn.style.display = 'inline-block';
 
-            // Reset form
             profileForm.reset();
             skills = <?php echo json_encode($profile['skills'] ?? []); ?>;
             educationRecords = <?php echo json_encode($profile['education'] ?? []); ?>;
+            currentWork = <?php echo json_encode($profile['current_work'] ?? null); ?>;
+            previousExperience = <?php echo json_encode($profile['previous_experience'] ?? []); ?>;
+
             renderSkills();
             renderEducation();
-            updateToggleLabels(); // Reset toggle UI
+            renderCurrentWork();
+            renderPreviousExperience();
+            updateToggleLabels();
             clearAlert();
         });
 
-        // Form submission
+        renderSkills();
+        renderEducation();
+        renderCurrentWork();
+        renderPreviousExperience();
+        updateToggleLabels();
+
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Collect education data from form
+            // Javascript only sends raw inputs, PHP will process them
+            let cwData = null;
+            if (document.getElementById('has_current_work').checked) {
+                cwData = {
+                    worked_as: document.getElementById('cw_worked_as').value.trim(),
+                    company: document.getElementById('cw_company').value.trim(),
+                    exp_m: parseInt(document.getElementById('cw_exp_m').value || 0),
+                    exp_d: parseInt(document.getElementById('cw_exp_d').value || 0)
+                };
+            }
+
+            const updatedExperience = [];
+            prevExpContainer.querySelectorAll('.education-form-item').forEach(item => {
+                const workedAs = item.querySelector('.exp-worked-as').value.trim();
+                const company = item.querySelector('.exp-company').value.trim();
+
+                if (workedAs && company) {
+                    updatedExperience.push({
+                        worked_as: workedAs,
+                        company: company,
+                        exp_m: parseInt(item.querySelector('.exp-m').value || 0),
+                        exp_d: parseInt(item.querySelector('.exp-d').value || 0)
+                    });
+                }
+            });
+
             const updatedEducation = [];
-            educationContainer.querySelectorAll('.education-form-item').forEach((item, index) => {
+            educationContainer.querySelectorAll('.education-form-item').forEach(item => {
                 const level = item.querySelector('.edu-level').value;
                 const major = item.querySelector('.edu-major').value.trim();
                 const institution = item.querySelector('.edu-institution').value.trim();
-
-                if (level && major && institution) {
-                    updatedEducation.push({
-                        education: level,
-                        major: major,
-                        edu_institution: institution
-                    });
-                }
+                if (level && major && institution) updatedEducation.push({ education: level, major: major, edu_institution: institution });
             });
 
             const formData = {
@@ -839,7 +632,9 @@ $profile = $profileResult['data'];
                 email: document.getElementById('email').value.trim(),
                 is_finding_job: document.getElementById('is_finding_job').checked,
                 skills: skills.length > 0 ? skills : [],
-                education: updatedEducation
+                education: updatedEducation,
+                current_work: cwData,
+                previous_experience: updatedExperience.length > 0 ? updatedExperience : null
             };
 
             saveBtn.disabled = true;
@@ -848,9 +643,7 @@ $profile = $profileResult['data'];
             try {
                 const response = await fetch('profile.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
 
@@ -858,16 +651,13 @@ $profile = $profileResult['data'];
 
                 if (result.status === 'success') {
                     showAlert('Profile updated successfully! Reloading...', 'success');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
                     showAlert(result.message, 'error');
                     saveBtn.disabled = false;
                     saveBtn.textContent = '💾 Save Changes';
                 }
             } catch (error) {
-                console.error('Error:', error);
                 showAlert('Failed to update profile. Please try again.', 'error');
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 Save Changes';
@@ -877,18 +667,13 @@ $profile = $profileResult['data'];
         function showAlert(message, type) {
             alert.textContent = message;
             alert.className = `alert alert-${type} show`;
-            setTimeout(() => {
-                alert.classList.remove('show');
-            }, 5000);
+            setTimeout(() => alert.classList.remove('show'), 5000);
         }
+        function clearAlert() { alert.classList.remove('show'); }
 
-        function clearAlert() {
-            alert.classList.remove('show');
-        }
-
-        // Make functions globally accessible
         window.removeSkill = removeSkill;
         window.removeEducation = removeEducation;
+        window.removeExperience = removeExperience;
         window.updateToggleLabels = updateToggleLabels;
     </script>
 </body>

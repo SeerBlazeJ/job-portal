@@ -114,6 +114,8 @@ pub struct UserProfile {
     pub email: String,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<String>>,
+    pub current_work: Option<Work>,
+    pub previous_experience: Option<Vec<Work>>,
 }
 
 #[derive(Serialize)]
@@ -161,6 +163,7 @@ pub struct User {
     pub email: String,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<String>>,
+    // TODO: Implement support for these values
     pub current_work: Option<Work>,
     pub previous_experience: Option<Vec<Work>>,
 }
@@ -169,7 +172,7 @@ pub struct User {
 pub struct Work {
     pub worked_as: String,
     pub company: String,
-    pub exp: chrono::Duration,
+    pub exp: u16,
 }
 
 #[allow(unused)]
@@ -187,8 +190,6 @@ pub struct JobsData {
     pub employer_name: String,
     pub title: String,
     pub employer_id: String,
-    // pub company_id: RecordId, // Left for later implementation
-    // TODO: Add support for images for posts
     pub description: String,
     pub skills_required: Vec<String>,
     pub majors_accepted: Vec<String>,
@@ -218,8 +219,6 @@ pub struct CreateJobRequest {
 pub struct Job {
     pub id: Option<RecordId>,
     pub employer_id: RecordId,
-    // pub company_id: RecordId, // Left for later implementation
-    // TODO: Add support for images for posts
     pub title: String,
     pub description: String,
     pub skills_required: Vec<String>,
@@ -253,6 +252,8 @@ impl From<User> for UserProfile {
             name: c.name,
             skills: c.skills,
             uid: c.uid,
+            previous_experience: c.previous_experience,
+            current_work: c.current_work,
         }
     }
 }

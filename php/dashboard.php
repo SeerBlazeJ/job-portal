@@ -343,7 +343,15 @@ if ($apiResult['success']) {
                                     </a>
                                 </h3>
                             <span class="email">📧 <?php echo htmlspecialchars($candidate['email']); ?></span>
-
+                            <?php if (!empty($candidate['current_work'])): ?>
+                                <div style="margin-bottom: 15px; font-size: 0.9rem;">
+                                    <strong style="color: #4a5568;">💼 Current Role:</strong><br>
+                                    <span style="color: #666;">
+                                        <?php echo htmlspecialchars($candidate['current_work']['worked_as']); ?>
+                                        at <?php echo htmlspecialchars($candidate['current_work']['company']); ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($candidate['education'])): ?>
                                 <div class="details">
                                     <div class="detail-item">

@@ -15,7 +15,6 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-Implement Profile Views
 Implement Company Profiles
 Implement Job Applications
 Implement search
