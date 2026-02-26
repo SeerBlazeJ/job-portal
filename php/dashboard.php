@@ -1,38 +1,33 @@
 <?php
 // dashboard.php
-require_once 'config.php';
+require_once "config.php";
 
-// Check authentication - redirect to signin if not logged in
 if (!isAuthenticated()) {
-    header('Location: signin.php');
-    exit;
+    header("Location: signin.php");
+    exit();
 }
 
-// Get JWT token
 $token = getJWTToken();
-// Fetch user profile to get uid
-$profileResult = callRustAPI('/profile', 'GET', null, $token);
+$profileResult = callRustAPI("/profile", "GET", null, $token);
 
-if (!$profileResult['success']) {
-    // Token might be expired or invalid
+if (!$profileResult["success"]) {
     clearJWTCookie();
-    header('Location: signin.php');
-    exit;
+    header("Location: signin.php");
+    exit();
 }
 
-$userProfile = $profileResult['data'];
-$uid = $userProfile['uid'];
-$userName = $userProfile['name'];
+$userProfile = $profileResult["data"];
+$uid = $userProfile["uid"];
+$userName = $userProfile["name"];
 
-// Fetch Dashboard Data
-$apiResult = callRustAPI('/get-jobs', 'POST', null, $token);
+$apiResult = callRustAPI("/get-jobs", "POST", null, $token);
 
 $dashboardData = [];
-$dashboardMode = 'none'; // 'jobs' or 'candidates'
+$dashboardMode = "none";
 
-if ($apiResult['success']) {
-    $dashboardMode = $apiResult['data']['mode'] ?? 'none';
-    $dashboardData = $apiResult['data']['payload'] ?? [];
+if ($apiResult["success"]) {
+    $dashboardMode = $apiResult["data"]["mode"] ?? "none";
+    $dashboardData = $apiResult["data"]["payload"] ?? [];
 }
 ?>
 <!DOCTYPE html>
@@ -84,11 +79,13 @@ if ($apiResult['success']) {
         <div class="header">
             <h1>🎯 Job Portal Dashboard</h1>
             <div class="user-info">
-                <span class="username">Welcome, <?php echo htmlspecialchars($userName); ?>!</span>
+                <span class="username">Welcome, <?php echo htmlspecialchars(
+                    $userName,
+                ); ?>!</span>
                 <a href="profile.php" class="btn-create-job">👤 Profile</a>
-                <?php if($dashboardMode === 'candidates'):?>
+                <?php if ($dashboardMode === "candidates"): ?>
                 <a href="create_job.php" class="btn-create-job">+ Create Job</a>
-                <?php endif ?>
+                <?php endif; ?>
                 <form action="logout.php" method="POST" style="margin: 0;">
                     <button type="submit" class="logout-btn">Logout</button>
                 </form>
@@ -97,9 +94,9 @@ if ($apiResult['success']) {
 
         <div class="jobs-section">
             <h2>
-                <?php if ($dashboardMode === 'jobs'): ?>
+                <?php if ($dashboardMode === "jobs"): ?>
                     📋 Recommended Jobs For You
-                <?php elseif ($dashboardMode === 'candidates'): ?>
+                <?php elseif ($dashboardMode === "candidates"): ?>
                     👥 Available Candidates
                 <?php else: ?>
                     Dashboard
@@ -113,41 +110,80 @@ if ($apiResult['success']) {
                 </div>
             <?php else: ?>
                 <div class="jobs-grid">
-                    <?php if ($dashboardMode === 'jobs'): ?>
+                    <?php if ($dashboardMode === "jobs"): ?>
                         <?php foreach ($dashboardData as $job): ?>
                             <div class="job-card">
-                                <h3><?php echo htmlspecialchars($job['title']); ?></h3>
+                                <h3><?php echo htmlspecialchars(
+                                    $job["title"],
+                                ); ?></h3>
                                 <div class="employer">
-                                    🏢 <a href="user_details.php?id=<?php echo urlencode($job['employer_id'] ?? ''); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
-                                        <?php echo htmlspecialchars($job['employer_name']); ?>
+                                    🏢 <a href="user_details.php?id=<?php echo urlencode(
+                                        $job["employer_id"] ?? "",
+                                    ); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
+                                        <?php echo htmlspecialchars(
+                                            $job["employer_name"],
+                                        ); ?>
                                     </a>
                                 </div>
-                                <div class="description"><?php echo htmlspecialchars($job['description']); ?></div>
+                                <div class="description"><?php echo htmlspecialchars(
+                                    $job["description"],
+                                ); ?></div>
+
+                                <?php if (!empty($job["photos"])): ?>
+                                    <div style="display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto;">
+                                        <?php foreach (
+                                            $job["photos"]
+                                            as $photo
+                                        ): ?>
+                                            <img src="<?php echo htmlspecialchars(
+                                                $photo,
+                                            ); ?>" style="width: 100px; height: 75px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd;">
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="details">
-                                    <?php if (!empty($job['location'])): ?>
-                                        <div class="detail-item location">📍 <?php echo htmlspecialchars($job['location']); ?></div>
+                                    <?php if (!empty($job["location"])): ?>
+                                        <div class="detail-item location">📍 <?php echo htmlspecialchars(
+                                            $job["location"],
+                                        ); ?></div>
                                     <?php endif; ?>
-                                    <?php if (isset($job['salary_range_start'])): ?>
-                                        <div class="detail-item salary">💰 $<?php echo number_format($job['salary_range_start']); ?>+</div>
+                                    <?php if (
+                                        isset($job["salary_range_start"])
+                                    ): ?>
+                                        <div class="detail-item salary">💰 $<?php echo number_format(
+                                            $job["salary_range_start"],
+                                        ); ?>+</div>
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if (!empty($job['skills_required'])): ?>
+                                <?php if (!empty($job["skills_required"])): ?>
                                     <div class="skills">
-                                        <?php foreach ($job['skills_required'] as $skill): ?>
-                                            <span class="skill-tag"><?php echo htmlspecialchars($skill); ?></span>
+                                        <?php foreach (
+                                            $job["skills_required"]
+                                            as $skill
+                                        ): ?>
+                                            <span class="skill-tag"><?php echo htmlspecialchars(
+                                                $skill,
+                                            ); ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
 
                                 <div style="margin-top: 20px; text-align: right;">
-                                    <?php if (isset($job['has_applied']) && $job['has_applied']): ?>
+                                    <?php if (
+                                        isset($job["has_applied"]) &&
+                                        $job["has_applied"]
+                                    ): ?>
                                         <button class="btn-create-job" style="background:#28a745; width:100%; text-align:center; border:none; cursor:default;" disabled>
                                             Applied ✅
                                         </button>
                                     <?php else: ?>
-                                        <button class="btn-create-job" style="background:#667eea; width:100%; text-align:center; border:none;" onclick="applyForJob('<?php echo htmlspecialchars($job['id']); ?>', '<?php echo htmlspecialchars($job['employer_id']); ?>', this)">
+                                        <button class="btn-create-job" style="background:#667eea; width:100%; text-align:center; border:none;" onclick="applyForJob('<?php echo htmlspecialchars(
+                                            $job["id"],
+                                        ); ?>', '<?php echo htmlspecialchars(
+    $job["employer_id"],
+); ?>', this)">
                                             Apply Now
                                         </button>
                                     <?php endif; ?>
@@ -155,40 +191,78 @@ if ($apiResult['success']) {
                             </div>
                         <?php endforeach; ?>
 
-                    <?php elseif ($dashboardMode === 'candidates'): ?>
+                    <?php elseif ($dashboardMode === "candidates"): ?>
                         <?php foreach ($dashboardData as $candidate): ?>
                             <div class="candidate-card">
                                 <span class="section-badge badge-candidate">Job Seeker</span>
-                                <h3>
-                                    <a href="user_details.php?id=<?php echo urlencode($candidate['id']); ?>" style="text-decoration: none; color: #333;">
-                                        <?php echo htmlspecialchars($candidate['name']); ?>
-                                    </a>
-                                </h3>
-                                <span class="email">📧 <?php echo htmlspecialchars($candidate['email']); ?></span>
 
-                                <?php if (!empty($candidate['current_work'])): ?>
+                                <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items:center;">
+                                    <?php if (
+                                        !empty($candidate["profile_picture"])
+                                    ): ?>
+                                        <img src="<?php echo htmlspecialchars(
+                                            $candidate["profile_picture"],
+                                        ); ?>" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
+                                    <?php else: ?>
+                                        <div style="width: 60px; height: 60px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 25px;">👤</div>
+                                    <?php endif; ?>
+
+                                    <div>
+                                        <h3 style="margin-bottom:0;">
+                                            <a href="user_details.php?id=<?php echo urlencode(
+                                                $candidate["id"],
+                                            ); ?>" style="text-decoration: none; color: #333;">
+                                                <?php echo htmlspecialchars(
+                                                    $candidate["name"],
+                                                ); ?>
+                                            </a>
+                                        </h3>
+                                        <span class="email" style="margin-bottom:0;">📧 <?php echo htmlspecialchars(
+                                            $candidate["email"],
+                                        ); ?></span>
+                                    </div>
+                                </div>
+
+                                <?php if (
+                                    !empty($candidate["current_work"])
+                                ): ?>
                                     <div style="margin-bottom: 15px; font-size: 0.9rem;">
                                         <strong style="color: #4a5568;">💼 Current Role:</strong><br>
                                         <span style="color: #666;">
-                                            <?php echo htmlspecialchars($candidate['current_work']['worked_as']); ?>
-                                            at <?php echo htmlspecialchars($candidate['current_work']['company']); ?>
+                                            <?php echo htmlspecialchars(
+                                                $candidate["current_work"][
+                                                    "worked_as"
+                                                ],
+                                            ); ?>
+                                            at <?php echo htmlspecialchars(
+                                                $candidate["current_work"][
+                                                    "company"
+                                                ],
+                                            ); ?>
                                         </span>
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if (!empty($candidate['education'])): ?>
+                                <?php if (!empty($candidate["education"])): ?>
                                     <div class="details">
                                         <div class="detail-item">
                                             <strong>🎓 Education:</strong>
-                                            <?php echo count($candidate['education']) . " qualifications listed"; ?>
+                                            <?php echo count(
+                                                $candidate["education"],
+                                            ) . " qualifications listed"; ?>
                                         </div>
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if (!empty($candidate['skills'])): ?>
+                                <?php if (!empty($candidate["skills"])): ?>
                                     <div class="skills">
-                                        <?php foreach ($candidate['skills'] as $skill): ?>
-                                            <span class="skill-tag" style="background: #764ba2;"><?php echo htmlspecialchars($skill); ?></span>
+                                        <?php foreach (
+                                            $candidate["skills"]
+                                            as $skill
+                                        ): ?>
+                                            <span class="skill-tag" style="background: #764ba2;"><?php echo htmlspecialchars(
+                                                $skill,
+                                            ); ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php else: ?>
@@ -196,7 +270,9 @@ if ($apiResult['success']) {
                                 <?php endif; ?>
 
                                 <div style="margin-top: 15px;">
-                                    <a href="mailto:<?php echo htmlspecialchars($candidate['email']); ?>" class="btn-create-job" style="font-size: 12px; padding: 5px 10px;">Contact</a>
+                                    <a href="mailto:<?php echo htmlspecialchars(
+                                        $candidate["email"],
+                                    ); ?>" class="btn-create-job" style="font-size: 12px; padding: 5px 10px;">Contact</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>

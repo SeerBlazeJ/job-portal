@@ -1,134 +1,169 @@
 <?php
 // profile.php
-require_once 'config.php';
+require_once "config.php";
 
 if (!isAuthenticated()) {
-    header('Location: signin.php');
-    exit;
+    header("Location: signin.php");
+    exit();
 }
 
 // PHP formats the display string
-function formatExp($days) {
-    if ($days === null || $days === '') return 'N/A';
-
-    $days = (int)$days;
+function formatExp($days)
+{
+    if ($days === null || $days === "") {
+        return "N/A";
+    }
+    $days = (int) $days;
     $months = floor($days / 30);
     $rem_days = $days % 30;
-
     $parts = [];
-    if ($months > 0) $parts[] = "{$months}m";
-    if ($rem_days > 0) $parts[] = "{$rem_days}d";
-
-    return empty($parts) ? "0d" : implode(' ', $parts);
+    if ($months > 0) {
+        $parts[] = "{$months}m";
+    }
+    if ($rem_days > 0) {
+        $parts[] = "{$rem_days}d";
+    }
+    return empty($parts) ? "0d" : implode(" ", $parts);
 }
 
 $token = getJWTToken();
 
-// Handle POST request (profile update)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json');
-
-    $input = json_decode(file_get_contents('php://input'), true);
+// Handle POST request (profile update via FormData)
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    header("Content-Type: application/json");
     $updateData = [];
 
-    if (isset($input['name']) && !empty(trim($input['name']))) {
-        $updateData['name'] = trim($input['name']);
+    // Map strings back from FormData payload
+    if (isset($_POST["name"]) && !empty(trim($_POST["name"]))) {
+        $updateData["name"] = trim($_POST["name"]);
     }
-    if (isset($input['email']) && !empty(trim($input['email']))) {
-        $updateData['email'] = trim($input['email']);
+    if (isset($_POST["email"]) && !empty(trim($_POST["email"]))) {
+        $updateData["email"] = trim($_POST["email"]);
     }
-    if (isset($input['is_finding_job'])) {
-        $updateData['is_finding_job'] = (bool)$input['is_finding_job'];
-    }
-    if (isset($input['skills']) && is_array($input['skills'])) {
-        $updateData['skills'] = array_values(array_filter($input['skills']));
-    }
-    if (isset($input['education']) && is_array($input['education'])) {
-        $educationData = [];
-        foreach ($input['education'] as $edu) {
-            if (!empty($edu['education']) && !empty($edu['major']) && !empty($edu['edu_institution'])) {
-                $educationData[] = [
-                    'education' => $edu['education'],
-                    'major' => trim($edu['major']),
-                    'edu_institution' => trim($edu['edu_institution'])
-                ];
-            }
-        }
-        $updateData['education'] = $educationData;
+    if (isset($_POST["is_finding_job"])) {
+        $updateData["is_finding_job"] = $_POST["is_finding_job"] === "1";
     }
 
-    // PHP calculates the Total Days for Rust
-    if (array_key_exists('current_work', $input)) {
-        if (is_array($input['current_work'])) {
-            $m = isset($input['current_work']['exp_m']) ? (int)$input['current_work']['exp_m'] : 0;
-            $d = isset($input['current_work']['exp_d']) ? (int)$input['current_work']['exp_d'] : 0;
-            $updateData['current_work'] = [
-                'worked_as' => trim($input['current_work']['worked_as']),
-                'company' => trim($input['current_work']['company']),
-                'exp' => ($m * 30) + $d // Processed purely in PHP
+    if (!empty($_POST["skills"])) {
+        $updateData["skills"] = array_values(
+            array_filter(json_decode($_POST["skills"], true)),
+        );
+    }
+
+    if (!empty($_POST["education"])) {
+        $updateData["education"] = json_decode($_POST["education"], true);
+    }
+
+    if (!empty($_POST["current_work"])) {
+        $cw = json_decode($_POST["current_work"], true);
+        $updateData["current_work"] = [
+            "worked_as" => trim($cw["worked_as"]),
+            "company" => trim($cw["company"]),
+            "exp" => (int) $cw["exp_m"] * 30 + (int) $cw["exp_d"],
+        ];
+    }
+
+    if (!empty($_POST["previous_experience"])) {
+        $pe = json_decode($_POST["previous_experience"], true);
+        $expData = [];
+        foreach ($pe as $work) {
+            $expData[] = [
+                "worked_as" => trim($work["worked_as"]),
+                "company" => trim($work["company"]),
+                "exp" => (int) $work["exp_m"] * 30 + (int) $work["exp_d"],
             ];
-        } else {
-            $updateData['current_work'] = null;
+        }
+        $updateData["previous_experience"] = $expData;
+    }
+
+    // Handle File Uploads
+    $uploadDir = "uploads/";
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    if (
+        isset($_FILES["profile_picture"]) &&
+        $_FILES["profile_picture"]["error"] === UPLOAD_ERR_OK
+    ) {
+        $ext = pathinfo($_FILES["profile_picture"]["name"], PATHINFO_EXTENSION);
+        $filename = "pfp_" . time() . "_" . uniqid() . "." . $ext;
+        if (
+            move_uploaded_file(
+                $_FILES["profile_picture"]["tmp_name"],
+                $uploadDir . $filename,
+            )
+        ) {
+            $updateData["profile_picture"] = $uploadDir . $filename;
         }
     }
 
-    if (array_key_exists('previous_experience', $input)) {
-        if (is_array($input['previous_experience'])) {
-            $expData = [];
-            foreach ($input['previous_experience'] as $work) {
-                if (!empty($work['worked_as']) && !empty($work['company'])) {
-                    $m = isset($work['exp_m']) ? (int)$work['exp_m'] : 0;
-                    $d = isset($work['exp_d']) ? (int)$work['exp_d'] : 0;
-                    $expData[] = [
-                        'worked_as' => trim($work['worked_as']),
-                        'company' => trim($work['company']),
-                        'exp' => ($m * 30) + $d // Processed purely in PHP
-                    ];
-                }
-            }
-            $updateData['previous_experience'] = $expData;
-        } else {
-            $updateData['previous_experience'] = null;
+    if (
+        isset($_FILES["resume"]) &&
+        $_FILES["resume"]["error"] === UPLOAD_ERR_OK
+    ) {
+        $ext = pathinfo($_FILES["resume"]["name"], PATHINFO_EXTENSION);
+        $filename = "resume_" . time() . "_" . uniqid() . "." . $ext;
+        if (
+            move_uploaded_file(
+                $_FILES["resume"]["tmp_name"],
+                $uploadDir . $filename,
+            )
+        ) {
+            $updateData["resume"] = $uploadDir . $filename;
         }
     }
 
     if (empty($updateData)) {
-        echo json_encode(['status' => 'error', 'message' => 'No fields to update']);
-        exit;
+        echo json_encode([
+            "status" => "error",
+            "message" => "No fields to update",
+        ]);
+        exit();
     }
 
-    $result = callRustAPI('/update-profile', 'POST', $updateData, $token);
+    $result = callRustAPI("/update-profile", "POST", $updateData, $token);
 
-    if ($result['success']) {
-        echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully!', 'data' => $result['data']]);
+    if ($result["success"]) {
+        echo json_encode([
+            "status" => "success",
+            "message" => "Profile updated successfully!",
+            "data" => $result["data"],
+        ]);
     } else {
-        echo json_encode(['status' => 'error', 'message' => $result['message']]);
+        echo json_encode([
+            "status" => "error",
+            "message" => $result["message"],
+        ]);
     }
-    exit;
+    exit();
 }
 
-$profileResult = callRustAPI('/profile', 'GET', null, $token);
+$profileResult = callRustAPI("/profile", "GET", null, $token);
 
-if (!$profileResult['success']) {
+if (!$profileResult["success"]) {
     clearJWTCookie();
-    header('Location: signin.php');
-    exit;
+    header("Location: signin.php");
+    exit();
 }
 
-$profile = $profileResult['data'];
+$profile = $profileResult["data"];
 
 // PHP pre-processes total days into separate months/days for the JavaScript state
-if (isset($profile['current_work']) && is_array($profile['current_work'])) {
-    $totalDays = (int)($profile['current_work']['exp'] ?? 0);
-    $profile['current_work']['exp_m'] = floor($totalDays / 30);
-    $profile['current_work']['exp_d'] = $totalDays % 30;
+if (isset($profile["current_work"]) && is_array($profile["current_work"])) {
+    $totalDays = (int) ($profile["current_work"]["exp"] ?? 0);
+    $profile["current_work"]["exp_m"] = floor($totalDays / 30);
+    $profile["current_work"]["exp_d"] = $totalDays % 30;
 }
 
-if (isset($profile['previous_experience']) && is_array($profile['previous_experience'])) {
-    foreach ($profile['previous_experience'] as &$exp) {
-        $totalDays = (int)($exp['exp'] ?? 0);
-        $exp['exp_m'] = floor($totalDays / 30);
-        $exp['exp_d'] = $totalDays % 30;
+if (
+    isset($profile["previous_experience"]) &&
+    is_array($profile["previous_experience"])
+) {
+    foreach ($profile["previous_experience"] as &$exp) {
+        $totalDays = (int) ($exp["exp"] ?? 0);
+        $exp["exp_m"] = floor($totalDays / 30);
+        $exp["exp_d"] = $totalDays % 30;
     }
 }
 ?>
@@ -219,24 +254,50 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
 
             <div class="profile-tabs view-mode">
                 <div class="profile-tab active" onclick="switchTab('profile')">Profile Info</div>
-                <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')" style="display: <?php echo $profile['is_finding_job'] ? 'none' : 'block'; ?>;">My Posted Jobs</div>
+                <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')" style="display: <?php echo $profile[
+                    "is_finding_job"
+                ]
+                    ? "none"
+                    : "block"; ?>;">My Posted Jobs</div>
             </div>
 
             <div id="alert" class="alert"></div>
 
             <div id="view-mode" class="view-mode tab-content active">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <?php if (!empty($profile["profile_picture"])): ?>
+                        <img src="<?php echo htmlspecialchars(
+                            $profile["profile_picture"],
+                        ); ?>" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #667eea; margin-bottom: 15px;">
+                    <?php else: ?>
+                        <div style="width: 120px; height: 120px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 40px;">👤</div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($profile["resume"])): ?>
+                        <div><a href="<?php echo htmlspecialchars(
+                            $profile["resume"],
+                        ); ?>" download class="btn" style="background: #28a745; color: white;">📄 Download Current Resume</a></div>
+                    <?php endif; ?>
+                </div>
+
                 <div class="profile-section">
                     <h3>📋 Basic Information</h3>
                     <div class="info-grid">
                         <div class="info-label">Username:</div>
-                        <div class="info-value"><?php echo htmlspecialchars($profile['uid']); ?></div>
+                        <div class="info-value"><?php echo htmlspecialchars(
+                            $profile["uid"],
+                        ); ?></div>
                         <div class="info-label">Name:</div>
-                        <div class="info-value"><?php echo htmlspecialchars($profile['name']); ?></div>
+                        <div class="info-value"><?php echo htmlspecialchars(
+                            $profile["name"],
+                        ); ?></div>
                         <div class="info-label">Email:</div>
-                        <div class="info-value"><?php echo htmlspecialchars($profile['email']); ?></div>
+                        <div class="info-value"><?php echo htmlspecialchars(
+                            $profile["email"],
+                        ); ?></div>
                         <div class="info-label">Account Role:</div>
                         <div class="info-value">
-                            <?php if ($profile['is_finding_job']): ?>
+                            <?php if ($profile["is_finding_job"]): ?>
                                 <span class="status-badge status-active">🔍 Job Seeker</span>
                             <?php else: ?>
                                 <span class="status-badge status-poster">📢 Job Poster</span>
@@ -247,10 +308,12 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
 
                 <div class="profile-section">
                     <h3>🎯 Skills</h3>
-                    <?php if (!empty($profile['skills'])): ?>
+                    <?php if (!empty($profile["skills"])): ?>
                         <div class="skills-container">
-                            <?php foreach ($profile['skills'] as $skill): ?>
-                                <span class="skill-tag"><?php echo htmlspecialchars($skill); ?></span>
+                            <?php foreach ($profile["skills"] as $skill): ?>
+                                <span class="skill-tag"><?php echo htmlspecialchars(
+                                    $skill,
+                                ); ?></span>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
@@ -260,49 +323,71 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
 
                 <div class="profile-section">
                     <h3>💼 Work Experience</h3>
-                    <?php if (!empty($profile['current_work'])): ?>
+                    <?php if (!empty($profile["current_work"])): ?>
                         <div class="education-item" style="border-left-color: #28a745;">
                             <div>
                                 <span class="edu-level-badge" style="background: #28a745;">Current Role</span>
-                                <strong style="margin-left: 10px;"><?php echo htmlspecialchars($profile['current_work']['worked_as']); ?></strong>
+                                <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
+                                    $profile["current_work"]["worked_as"],
+                                ); ?></strong>
                             </div>
                             <div style="margin-top: 8px;">
-                                🏢 <?php echo htmlspecialchars($profile['current_work']['company']); ?>
-                                • ⏱️ <?php echo formatExp($profile['current_work']['exp']); ?>
+                                🏢 <?php echo htmlspecialchars(
+                                    $profile["current_work"]["company"],
+                                ); ?>
+                                • ⏱️ <?php echo formatExp(
+                                    $profile["current_work"]["exp"],
+                                ); ?>
                             </div>
                         </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($profile['previous_experience'])): ?>
-                        <?php foreach ($profile['previous_experience'] as $exp): ?>
+                    <?php if (!empty($profile["previous_experience"])): ?>
+                        <?php foreach (
+                            $profile["previous_experience"]
+                            as $exp
+                        ): ?>
                             <div class="education-item">
                                 <div>
-                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars($exp['worked_as']); ?></strong>
+                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
+                                        $exp["worked_as"],
+                                    ); ?></strong>
                                 </div>
                                 <div style="margin-top: 8px;">
-                                    🏢 <?php echo htmlspecialchars($exp['company']); ?>
-                                    • ⏱️ <?php echo formatExp($exp['exp']); ?>
+                                    🏢 <?php echo htmlspecialchars(
+                                        $exp["company"],
+                                    ); ?>
+                                    • ⏱️ <?php echo formatExp($exp["exp"]); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
 
-                    <?php if (empty($profile['current_work']) && empty($profile['previous_experience'])): ?>
+                    <?php if (
+                        empty($profile["current_work"]) &&
+                        empty($profile["previous_experience"])
+                    ): ?>
                         <p class="empty-state">No work experience records added yet</p>
                     <?php endif; ?>
                 </div>
 
                 <div class="profile-section">
                     <h3>🎓 Education</h3>
-                    <?php if (!empty($profile['education'])): ?>
-                        <?php foreach ($profile['education'] as $edu): ?>
+                    <?php if (!empty($profile["education"])): ?>
+                        <?php foreach ($profile["education"] as $edu): ?>
                             <div class="education-item">
                                 <div>
-                                    <span class="edu-level-badge"><?php echo htmlspecialchars($edu['education']); ?></span>
-                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars($edu['major']); ?></strong>
+                                    <span class="edu-level-badge"><?php echo htmlspecialchars(
+                                        $edu["education"],
+                                    ); ?></span>
+                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
+                                        $edu["major"],
+                                    ); ?></strong>
                                 </div>
                                 <div style="margin-top: 8px;">
-                                    📍 <?php echo htmlspecialchars($edu['edu_institution']); ?>
+                                    📍 <?php echo htmlspecialchars(
+                                        $edu["edu_institution"],
+                                    ); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -321,24 +406,50 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             <div id="edit-mode" class="edit-mode">
                 <form id="profile-form">
                     <div class="profile-section">
-                        <h3>📋 Basic Information</h3>
+                        <h3>📋 Basic Information & Files</h3>
+
+                        <div class="form-group">
+                            <label for="profile_picture">Profile Picture (Image)</label>
+                            <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label for="resume">Resume (PDF/Word)</label>
+                            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx">
+                        </div>
+
                         <div class="form-group">
                             <label for="name">Name *</label>
-                            <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($profile['name']); ?>" required>
+                            <input type="text" id="name" name="name" value="<?php echo htmlspecialchars(
+                                $profile["name"],
+                            ); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($profile['email']); ?>" required>
+                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars(
+                                $profile["email"],
+                            ); ?>" required>
                         </div>
                         <div class="form-group">
                             <label>Primary Role</label>
                             <div class="toggle-switch-container">
-                                <span class="toggle-label <?php echo !$profile['is_finding_job'] ? 'active' : ''; ?>" id="label-poster">Job Poster</span>
+                                <span class="toggle-label <?php echo !$profile[
+                                    "is_finding_job"
+                                ]
+                                    ? "active"
+                                    : ""; ?>" id="label-poster">Job Poster</span>
                                 <label class="switch">
-                                    <input type="checkbox" id="is_finding_job" name="is_finding_job" <?php echo $profile['is_finding_job'] ? 'checked' : ''; ?> onchange="updateToggleLabels()">
+                                    <input type="checkbox" id="is_finding_job" name="is_finding_job" <?php echo $profile[
+                                        "is_finding_job"
+                                    ]
+                                        ? "checked"
+                                        : ""; ?> onchange="updateToggleLabels()">
                                     <span class="slider round"></span>
                                 </label>
-                                <span class="toggle-label <?php echo $profile['is_finding_job'] ? 'active' : ''; ?>" id="label-seeker">Job Seeker</span>
+                                <span class="toggle-label <?php echo $profile[
+                                    "is_finding_job"
+                                ]
+                                    ? "active"
+                                    : ""; ?>" id="label-seeker">Job Seeker</span>
                             </div>
                         </div>
                     </div>
@@ -391,11 +502,16 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
         const saveBtn = document.getElementById('save-btn');
         const alert = document.getElementById('alert');
 
-        // Pre-processed data from PHP
-        let skills = <?php echo json_encode($profile['skills'] ?? []); ?>;
-        let educationRecords = <?php echo json_encode($profile['education'] ?? []); ?>;
-        let currentWork = <?php echo json_encode($profile['current_work'] ?? null); ?>;
-        let previousExperience = <?php echo json_encode($profile['previous_experience'] ?? []); ?>;
+        let skills = <?php echo json_encode($profile["skills"] ?? []); ?>;
+        let educationRecords = <?php echo json_encode(
+            $profile["education"] ?? [],
+        ); ?>;
+        let currentWork = <?php echo json_encode(
+            $profile["current_work"] ?? null,
+        ); ?>;
+        let previousExperience = <?php echo json_encode(
+            $profile["previous_experience"] ?? [],
+        ); ?>;
 
         const eduLevels = [
             { value: 'SecondarySchool', label: 'Secondary School' },
@@ -406,7 +522,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             { value: 'PhD', label: 'PhD/Doctorate' }
         ];
 
-        // Tab Switcher Logic
         function switchTab(tab) {
             document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -421,7 +536,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             }
         }
 
-        // Fetch and Render Jobs
         async function loadMyJobs() {
             const container = document.getElementById('my-jobs-list');
             try {
@@ -458,7 +572,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             }
         }
 
-        // Fetch and Render Applicants for a specific job
         async function toggleApplicants(jobId, btn) {
             const container = document.getElementById(`applicants-${jobId}`);
 
@@ -486,7 +599,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
 
                     let html = `<h4 style="margin-bottom: 10px; color:#667eea;">${result.data.length} Applicant(s)</h4>`;
                     result.data.forEach(app => {
-                        // Formatting the ISO datetime string
                         const dateObj = new Date(app.datetime_applied);
                         const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
 
@@ -557,7 +669,6 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             const workedAs = hasWork ? currentWork.worked_as || '' : '';
             const company = hasWork ? currentWork.company || '' : '';
 
-            // Rely completely on PHP-injected values
             const months = hasWork ? currentWork.exp_m || 0 : 0;
             const days = hasWork ? currentWork.exp_d || 0 : 0;
 
@@ -698,10 +809,16 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             editBtn.style.display = 'inline-block';
 
             profileForm.reset();
-            skills = <?php echo json_encode($profile['skills'] ?? []); ?>;
-            educationRecords = <?php echo json_encode($profile['education'] ?? []); ?>;
-            currentWork = <?php echo json_encode($profile['current_work'] ?? null); ?>;
-            previousExperience = <?php echo json_encode($profile['previous_experience'] ?? []); ?>;
+            skills = <?php echo json_encode($profile["skills"] ?? []); ?>;
+            educationRecords = <?php echo json_encode(
+                $profile["education"] ?? [],
+            ); ?>;
+            currentWork = <?php echo json_encode(
+                $profile["current_work"] ?? null,
+            ); ?>;
+            previousExperience = <?php echo json_encode(
+                $profile["previous_experience"] ?? [],
+            ); ?>;
 
             renderSkills();
             renderEducation();
@@ -753,15 +870,22 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
                 if (level && major && institution) updatedEducation.push({ education: level, major: major, edu_institution: institution });
             });
 
-            const formData = {
-                name: document.getElementById('name').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                is_finding_job: document.getElementById('is_finding_job').checked,
-                skills: skills.length > 0 ? skills : [],
-                education: updatedEducation,
-                current_work: cwData,
-                previous_experience: updatedExperience.length > 0 ? updatedExperience : null
-            };
+            // Convert to FormData for file uploads
+            const fd = new FormData();
+            fd.append('name', document.getElementById('name').value.trim());
+            fd.append('email', document.getElementById('email').value.trim());
+            fd.append('is_finding_job', document.getElementById('is_finding_job').checked ? '1' : '0');
+
+            if (skills.length > 0) fd.append('skills', JSON.stringify(skills));
+            if (updatedEducation.length > 0) fd.append('education', JSON.stringify(updatedEducation));
+            if (cwData) fd.append('current_work', JSON.stringify(cwData));
+            if (updatedExperience.length > 0) fd.append('previous_experience', JSON.stringify(updatedExperience));
+
+            const pfpFile = document.getElementById('profile_picture').files[0];
+            if (pfpFile) fd.append('profile_picture', pfpFile);
+
+            const resumeFile = document.getElementById('resume').files[0];
+            if (resumeFile) fd.append('resume', resumeFile);
 
             saveBtn.disabled = true;
             saveBtn.textContent = '💾 Saving...';
@@ -769,8 +893,7 @@ if (isset($profile['previous_experience']) && is_array($profile['previous_experi
             try {
                 const response = await fetch('profile.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: fd // Do NOT set Content-Type, fetch will auto-set multipart/form-data boundary
                 });
 
                 const result = await response.json();

@@ -48,6 +48,8 @@ pub async fn signup(
         current_work: None,
         previous_experience: None,
         skills: None,
+        resume: None,
+        profile_picture: None,
     };
     let _: Option<User> = db
         .create("User")
@@ -412,6 +414,7 @@ async fn get_jobs_data(
                 datetime_due: job.datetime_due,
                 min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
                 has_applied: None,
+                photos: job.photos,
             })
         }
     });
@@ -507,6 +510,7 @@ pub async fn create_job(
         .unwrap_or_default(),
         datetime_due,
         min_ed_lvl: data.min_ed_lvl as u8,
+        photos: data.photos,
     };
 
     let created: Option<Job> = db
@@ -572,6 +576,15 @@ pub async fn update_profile(
         let exp_json = serde_json::to_string(previous_experience)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         updates.push(format!("previous_experience = {}", exp_json));
+    }
+    if let Some(profile_picture) = &data.profile_picture {
+        updates.push(format!(
+            "profile_picture = '{}'",
+            profile_picture.replace("'", "''")
+        ));
+    }
+    if let Some(resume) = &data.resume {
+        updates.push(format!("resume = '{}'", resume.replace("'", "''")));
     }
 
     if updates.is_empty() {
@@ -701,6 +714,7 @@ pub async fn get_my_jobs(
             datetime_due: job.datetime_due,
             min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
             has_applied: None,
+            photos: job.photos,
         })
         .collect();
 

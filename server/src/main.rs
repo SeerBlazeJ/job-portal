@@ -15,9 +15,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-Implement Job Applications
 Implement search
-Implement File handlers (resume, pfp, posts)
 Implement Chat System
 Implement Filters
 Implement Agentic features + AI based job finding

@@ -116,6 +116,8 @@ pub struct UserProfile {
     pub skills: Option<Vec<String>>,
     pub current_work: Option<Work>,
     pub previous_experience: Option<Vec<Work>>,
+    pub profile_picture: Option<String>,
+    pub resume: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -136,6 +138,8 @@ pub struct UpdateProfileRequest {
     pub education: Option<Vec<EducationUpdateRequest>>,
     pub current_work: Option<Work>,
     pub previous_experience: Option<Vec<Work>>,
+    pub profile_picture: Option<String>,
+    pub resume: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -155,7 +159,6 @@ pub struct Claims {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Option<RecordId>,
-    // TODO: add PFP support
     pub uid: String,
     pub pword_hash: String,
     pub name: String,
@@ -163,9 +166,10 @@ pub struct User {
     pub email: String,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<String>>,
-    // TODO: Implement support for these values
     pub current_work: Option<Work>,
     pub previous_experience: Option<Vec<Work>>,
+    pub profile_picture: Option<String>,
+    pub resume: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -201,6 +205,7 @@ pub struct JobsData {
     pub datetime_due: Option<NaiveDateTime>,
     pub min_ed_lvl: EduLevel,
     pub has_applied: Option<bool>,
+    pub photos: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -214,6 +219,7 @@ pub struct CreateJobRequest {
     pub salary_range_end: Option<u32>,
     pub datetime_due: String,
     pub min_ed_lvl: EduLevel,
+    pub photos: Option<Vec<String>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -231,6 +237,7 @@ pub struct Job {
     pub datetime_created: NaiveDateTime,
     pub datetime_due: Option<NaiveDateTime>,
     pub min_ed_lvl: u8,
+    pub photos: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -279,6 +286,8 @@ impl From<User> for UserProfile {
             uid: c.uid,
             previous_experience: c.previous_experience,
             current_work: c.current_work,
+            profile_picture: c.profile_picture,
+            resume: c.resume,
         }
     }
 }
