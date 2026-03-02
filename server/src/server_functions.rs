@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -29,7 +29,13 @@ pub async fn get_profile(
         .take(0)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
-    Ok(Json(UserProfile::from(user)))
+
+    let mut profile = UserProfile::from(user.clone());
+    if let Some(user_id) = &user.id {
+        profile.working_at = get_working_at(&db, user_id).await;
+    }
+
+    Ok(Json(profile))
 }
 
 pub async fn signup(
@@ -43,13 +49,14 @@ pub async fn signup(
         pword_hash: password_hash,
         email: data.email,
         name: data.name,
-        is_finding_job: true,
+        is_finding_job: data.is_finding_job,
         education: None,
         current_work: None,
         previous_experience: None,
         skills: None,
         resume: None,
         profile_picture: None,
+        about_user: None,
     };
     let _: Option<User> = db
         .create("User")
@@ -81,6 +88,7 @@ pub async fn signin(
         false => Err(StatusCode::UNAUTHORIZED),
     }
 }
+
 pub async fn home(
     State(db): State<Surreal<Db>>,
     Extension(claims): Extension<Claims>,
@@ -90,10 +98,9 @@ pub async fn home(
         let (skills_vec, edu_info_vec) = get_edu_skill_info(&user).await?;
         let mut jobs: Vec<JobsData> = get_jobs_data(skills_vec, edu_info_vec, &db).await?;
 
-        // NEW: Fetch applied job IDs for this user to update UI state
         if let Some(user_id) = &user.id {
             let mut response = db
-                .query("SELECT * FROM applied_for WHERE in = $uid")
+                .query("SELECT * FROM application WHERE in = $uid")
                 .bind(("uid", user_id.clone()))
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -102,10 +109,8 @@ pub async fn home(
             let applied_ids: HashSet<String> =
                 applied.into_iter().map(|a| a.out.to_string()).collect();
 
-            // Set the state for the frontend
-            for job in jobs.iter_mut() {
-                job.has_applied = Some(applied_ids.contains(&job.id));
-            }
+            // Filters jobs user already applied for
+            jobs.retain(|job| !applied_ids.contains(&job.id));
         }
 
         Ok(Json(DashboardResponse::Jobs(jobs)))
@@ -115,11 +120,18 @@ pub async fn home(
             .query(sql)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
         let candidates: Vec<User> = response
             .take(0)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let candidates_data = candidates.into_iter().map(UserProfile::from).collect();
+
+        let mut candidates_data = Vec::new();
+        for u in candidates {
+            let mut profile = UserProfile::from(u.clone());
+            if let Some(user_id) = &u.id {
+                profile.working_at = get_working_at(&db, user_id).await;
+            }
+            candidates_data.push(profile);
+        }
         Ok(Json(DashboardResponse::Candidates(candidates_data)))
     }
 }
@@ -135,7 +147,13 @@ pub async fn get_user_info(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match user {
-        Some(profile) => Ok(Json(UserProfile::from(profile))),
+        Some(u) => {
+            let mut profile = UserProfile::from(u.clone());
+            if let Some(user_id) = &u.id {
+                profile.working_at = get_working_at(&db, user_id).await;
+            }
+            Ok(Json(profile))
+        }
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -145,7 +163,7 @@ async fn get_jobs_data(
     edu_info_vec: Option<Vec<(u8, String)>>,
     db: &Surreal<Db>,
 ) -> Result<Vec<JobsData>, StatusCode> {
-    let mut unique_jobs: HashMap<String, (Job, f32)> = HashMap::new(); // (Job, score)
+    let mut unique_jobs: HashMap<String, (Job, f32)> = HashMap::new();
 
     match (skills_vec, edu_info_vec) {
         (None, None) => {
@@ -158,13 +176,12 @@ async fn get_jobs_data(
 
             for job in jobs {
                 if let Some(id) = &job.id {
-                    unique_jobs.insert(id.to_string(), (job, 0.5)); // Base score for random
+                    unique_jobs.insert(id.to_string(), (job, 0.5));
                 }
             }
         }
 
         (Some(skills), None) => {
-            // Get jobs matching any skills
             let matched_jobs: Vec<Job> = db
                 .query(
                     "SELECT * FROM jobs
@@ -178,7 +195,6 @@ async fn get_jobs_data(
                 .take(0)
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            // Score based on number of matching skills
             for job in matched_jobs {
                 if let Some(id) = &job.id {
                     let score = calculate_skill_match_score(&skills, &job.skills_required);
@@ -186,7 +202,6 @@ async fn get_jobs_data(
                 }
             }
 
-            // If we have fewer than 15 jobs, add some random ones
             if unique_jobs.len() < 15 {
                 let random_jobs: Vec<Job> = db
                     .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 10")
@@ -203,9 +218,7 @@ async fn get_jobs_data(
             }
         }
 
-        // Case 3: Only education - filter by education level and majors
         (None, Some(edu_info)) => {
-            // Extract all unique majors and find highest education level
             let majors: Vec<String> = edu_info.iter().map(|(_, major)| major.clone()).collect();
             let highest_edu_level = edu_info
                 .iter()
@@ -213,7 +226,6 @@ async fn get_jobs_data(
                 .max()
                 .unwrap_or(0);
 
-            // Single query for all majors
             let matched_jobs: Vec<Job> = db
                 .query(
                     "SELECT * FROM jobs
@@ -236,7 +248,6 @@ async fn get_jobs_data(
                 }
             }
 
-            // Fallback: Add jobs that match education level but not major
             if unique_jobs.len() < 15 {
                 let fallback_jobs: Vec<Job> = db
                     .query(
@@ -259,7 +270,6 @@ async fn get_jobs_data(
             }
         }
 
-        // Case 4: Both skills and education - comprehensive matching with scoring
         (Some(skills), Some(edu_info)) => {
             let majors: Vec<String> = edu_info.iter().map(|(_, major)| major.clone()).collect();
             let highest_edu_level = edu_info
@@ -268,7 +278,6 @@ async fn get_jobs_data(
                 .max()
                 .unwrap_or(0);
 
-            // Get jobs matching both skills and education
             let perfect_matches: Vec<Job> = db
                 .query(
                     "SELECT * FROM jobs
@@ -290,12 +299,11 @@ async fn get_jobs_data(
                 if let Some(id) = &job.id {
                     let skill_score = calculate_skill_match_score(&skills, &job.skills_required);
                     let edu_score = calculate_education_match_score(&majors, &job.majors_accepted);
-                    let combined_score = (skill_score * 0.6) + (edu_score * 0.4); // Weight skills more
+                    let combined_score = (skill_score * 0.6) + (edu_score * 0.4);
                     unique_jobs.insert(id.to_string(), (job, combined_score));
                 }
             }
 
-            // Fallback 1: Jobs matching skills only
             if unique_jobs.len() < 15 {
                 let skill_matches: Vec<Job> = db
                     .query(
@@ -321,7 +329,6 @@ async fn get_jobs_data(
                 }
             }
 
-            // Fallback 2: Jobs matching education only
             if unique_jobs.len() < 15 {
                 let edu_matches: Vec<Job> = db
                     .query(
@@ -347,7 +354,6 @@ async fn get_jobs_data(
                 }
             }
 
-            // Final fallback: Random jobs matching education level
             if unique_jobs.len() < 10 {
                 let random_jobs: Vec<Job> = db
                     .query(
@@ -371,12 +377,10 @@ async fn get_jobs_data(
         }
     };
 
-    // Sort by score (highest first) and take top 20
     let mut sorted_jobs: Vec<(Job, f32)> = unique_jobs.into_values().collect();
     sorted_jobs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     sorted_jobs.truncate(20);
 
-    // Fetch employer names concurrently
     let database = db.clone();
     let futures = sorted_jobs.into_iter().map(|(job, _score)| {
         let db = database.clone();
@@ -427,7 +431,7 @@ async fn get_jobs_data(
 
 fn calculate_skill_match_score(user_skills: &[String], job_skills: &[String]) -> f32 {
     if job_skills.is_empty() {
-        return 0.5; // Neutral score if job has no skill requirements
+        return 0.5;
     }
 
     let user_skills_set: HashSet<&String> = user_skills.iter().collect();
@@ -435,9 +439,7 @@ fn calculate_skill_match_score(user_skills: &[String], job_skills: &[String]) ->
 
     let matching_skills = user_skills_set.intersection(&job_skills_set).count();
     let total_job_skills = job_skills.len();
-
     let match_percentage = matching_skills as f32 / total_job_skills as f32;
-
     let extra_skills_bonus = if matching_skills > 0 { 0.1 } else { 0.0 };
 
     (match_percentage + extra_skills_bonus).min(1.0)
@@ -530,7 +532,6 @@ pub async fn update_profile(
     Extension(claims): Extension<Claims>,
     Json(data): Json<UpdateProfileRequest>,
 ) -> Result<Json<UserProfile>, StatusCode> {
-    // First, get the current user
     let users: Vec<User> = db
         .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", claims.uid.clone()))
@@ -586,6 +587,9 @@ pub async fn update_profile(
     if let Some(resume) = &data.resume {
         updates.push(format!("resume = '{}'", resume.replace("'", "''")));
     }
+    if let Some(about_user) = &data.about_user {
+        updates.push(format!("about_user = '{}'", about_user.replace("'", "''")));
+    }
 
     if updates.is_empty() {
         return Err(StatusCode::BAD_REQUEST);
@@ -609,8 +613,12 @@ pub async fn update_profile(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let updated_user = updated_users.first().ok_or(StatusCode::NOT_FOUND)?.clone();
+    let mut profile = UserProfile::from(updated_user.clone());
+    if let Some(user_id) = &updated_user.id {
+        profile.working_at = get_working_at(&db, user_id).await;
+    }
 
-    Ok(Json(UserProfile::from(updated_user)))
+    Ok(Json(profile))
 }
 
 pub async fn apply_for_job(
@@ -618,7 +626,6 @@ pub async fn apply_for_job(
     Extension(claims): Extension<Claims>,
     Json(data): Json<ApplicationRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    // 1. Get the current user's RecordId
     let users: Vec<User> = db
         .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", claims.uid.clone()))
@@ -630,23 +637,16 @@ pub async fn apply_for_job(
     let user = users.first().ok_or(StatusCode::NOT_FOUND)?;
     let user_record_id = user.id.clone().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // 2. Parse the target job and employer IDs
     let job_record_id = RecordId::from_str(&data.job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
     let employer_record_id =
         RecordId::from_str(&data.employer_id).map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    // 3. Prepare edge data
     let datetime_applied = chrono::Utc::now().to_rfc3339();
-    let status = "pending".to_string();
+    let status = "Pending".to_string();
 
-    // 4. Execute the RELATE query
-    // Replace "applied_for" with the actual name of your edge table
-    let sql = "RELATE $applicant->applied_for->$job
-               SET datetime_applied = $datetime,
-                   employer_id = $employer,
-                   status = $status;";
+    let sql = "RELATE $applicant->application->$job SET datetime_applied = $datetime, employer_id = $employer, status = $status;";
 
-    let mut response = db
+    let response = db
         .query(sql)
         .bind(("applicant", user_record_id))
         .bind(("job", job_record_id))
@@ -656,18 +656,12 @@ pub async fn apply_for_job(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Optional: Verify creation
-    let created: Option<Application> = response
-        .take(0)
+    response
+        .check()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    match created {
-        Some(_) => Ok(StatusCode::ACCEPTED),
-        None => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
+    Ok(StatusCode::ACCEPTED)
 }
-
-use crate::data_structures::ApplicantData;
 
 pub async fn get_my_jobs(
     State(db): State<Surreal<Db>>,
@@ -694,7 +688,6 @@ pub async fn get_my_jobs(
         .take(0)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Convert to JobsData so the ID safely becomes a string for the frontend
     let employer_name = user.name.clone();
     let jobs_data: Vec<JobsData> = jobs
         .into_iter()
@@ -729,7 +722,7 @@ pub async fn get_job_applicants(
     let job_record_id = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
 
     let mut result = db
-        .query("SELECT * FROM applied_for WHERE out = $job_id")
+        .query("SELECT * FROM application WHERE out = $job_id")
         .bind(("job_id", job_record_id))
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -757,4 +750,450 @@ pub async fn get_job_applicants(
     }
 
     Ok(Json(applicants))
+}
+
+pub async fn create_company(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<CreateCompanyRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let user = get_user_from_uid(claims.uid.clone(), &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let company = Company {
+        id: None,
+        created_by: user_id.clone(),
+        name: data.name,
+        description: data.description,
+        location: data.location,
+        logo: data.logo,
+        website: data.website,
+    };
+
+    let mut res = db
+        .query("CREATE company CONTENT $comp")
+        .bind(("comp", company))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let created: Option<Company> = res.take(0).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if let Some(comp) = created {
+        let comp_id = comp.id.unwrap();
+        let now = chrono::Utc::now().timestamp();
+
+        let sql = "RELATE $user->works_for->$company SET designation = $designation, employee_since = $since, is_verified = true";
+        let res2 = db
+            .query(sql)
+            .bind(("company", comp_id))
+            .bind(("user", user_id))
+            .bind(("designation", data.designation))
+            .bind(("since", now))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        res2.check()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        Ok(Json("Company created successfully".to_string()))
+    } else {
+        Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+pub async fn get_company(
+    State(db): State<Surreal<Db>>,
+    Path(company_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<CompanyProfileResponse>, StatusCode> {
+    let comp_rid = RecordId::from_str(&company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let current_user = get_user_from_uid(claims.uid.clone(), &db).await?;
+    let current_user_id = current_user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut comp_res = db
+        .query("SELECT * FROM company WHERE id = $id")
+        .bind(("id", comp_rid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp_opt: Option<Company> = comp_res
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let company = comp_opt.ok_or(StatusCode::NOT_FOUND)?;
+
+    let is_owner = company.created_by == current_user_id;
+
+    let mut works_for_res = db
+        .query("SELECT * FROM works_for WHERE out = $id")
+        .bind(("id", comp_rid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let works_for_edges: Vec<works_for> = works_for_res.take(0).unwrap_or_default();
+
+    let mut is_employee = false;
+    let mut employees = Vec::new();
+
+    for edge in works_for_edges {
+        if edge.user == current_user_id {
+            is_employee = true;
+        }
+
+        let mut u_res = db
+            .query("SELECT * FROM $user")
+            .bind(("user", edge.user.clone()))
+            .await
+            .unwrap();
+
+        let users: Vec<User> = u_res.take(0).unwrap_or_default();
+        if let Some(u) = users.into_iter().next() {
+            employees.push(EmployeeData {
+                user: UserProfile::from(u),
+                designation: edge.designation,
+                employee_since: edge.employee_since,
+                is_verified: edge.is_verified,
+            });
+        }
+    }
+
+    Ok(Json(CompanyProfileResponse {
+        company: CompanyData::from(company),
+        employees,
+        is_employee,
+        is_owner,
+    }))
+}
+
+pub async fn join_company(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<JoinCompanyRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let user = get_user_from_uid(claims.uid.clone(), &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp_rid = RecordId::from_str(&data.company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let now = chrono::Utc::now().timestamp();
+
+    let sql = "RELATE $user->works_for->$company SET designation = $designation, employee_since = $since, is_verified = false";
+    let res = db
+        .query(sql)
+        .bind(("company", comp_rid))
+        .bind(("user", user_id))
+        .bind(("designation", data.designation))
+        .bind(("since", now))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Successfully joined company".to_string()))
+}
+
+pub async fn search_companies(
+    State(db): State<Surreal<Db>>,
+    Query(params): Query<SearchQuery>,
+) -> Result<Json<Vec<CompanyData>>, StatusCode> {
+    let mut res = db.query("SELECT * FROM company WHERE string::lowercase(name) CONTAINS string::lowercase($q) LIMIT 10")
+        .bind(("q", params.q))
+        .await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let companies: Vec<Company> = res.take(0).unwrap_or_default();
+    Ok(Json(companies.into_iter().map(CompanyData::from).collect()))
+}
+
+async fn get_working_at(db: &Surreal<Db>, user_id: &RecordId) -> Option<UserCompanyData> {
+    let mut res = db.query(
+        "SELECT out AS company_id, out.name AS company_name, out.created_by AS creator_id, designation, is_verified FROM works_for WHERE in = $uid"
+    ).bind(("uid", user_id.clone())).await.ok()?;
+
+    let records: Vec<WorksForQueryResult> = res.take(0).ok()?;
+    if let Some(record) = records.into_iter().next() {
+        Some(UserCompanyData {
+            company_id: record.company_id.to_string(),
+            company_name: record.company_name,
+            designation: record.designation,
+            is_verified: record.is_verified,
+            is_owner: record.creator_id == *user_id,
+        })
+    } else {
+        None
+    }
+}
+
+pub async fn verify_employee(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<VerifyEmployeeRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp_rid = RecordId::from_str(&data.company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let mut comp_res = db
+        .query("SELECT * FROM company WHERE id = $id AND created_by = $uid")
+        .bind(("id", comp_rid.clone()))
+        .bind(("uid", user_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp: Option<Company> = comp_res.take(0).unwrap_or_default();
+
+    if comp.is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let target_user_rid = RecordId::from_str(&data.user_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let res = db
+        .query("UPDATE works_for SET is_verified = true WHERE in = $target AND out = $comp")
+        .bind(("target", target_user_rid))
+        .bind(("comp", comp_rid))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Employee verified successfully".to_string()))
+}
+
+pub async fn update_application_status(
+    State(db): State<Surreal<Db>>,
+    Extension(_claims): Extension<Claims>,
+    Json(data): Json<UpdateApplicationStatusRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let job_rid = RecordId::from_str(&data.job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let applicant_rid =
+        RecordId::from_str(&data.applicant_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let res = db
+        .query("UPDATE application SET status = $status WHERE in = $applicant AND out = $job")
+        .bind(("status", data.status))
+        .bind(("applicant", applicant_rid))
+        .bind(("job", job_rid))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Status updated".to_string()))
+}
+
+pub async fn get_my_applications(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<MyApplicationData>>, StatusCode> {
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut res = db
+        .query("SELECT * FROM application WHERE in = $uid")
+        .bind(("uid", user_id.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let apps: Vec<Application> = res.take(0).unwrap_or_default();
+    let mut my_apps = Vec::new();
+
+    for app in apps {
+        let mut job_res = db
+            .query("SELECT * FROM jobs WHERE id = $job_id")
+            .bind(("job_id", app.out.clone()))
+            .await
+            .unwrap();
+
+        let jobs: Vec<Job> = job_res.take(0).unwrap_or_default();
+        if let Some(job) = jobs.into_iter().next() {
+            let mut name_res = db
+                .query("SELECT VALUE name FROM $eid")
+                .bind(("eid", job.employer_id.clone()))
+                .await
+                .unwrap();
+            let name: Option<String> = name_res.take(0).unwrap_or_default();
+
+            let job_data = JobsData {
+                id: job.id.unwrap().to_string(),
+                employer_name: name.unwrap_or_default(),
+                employer_id: job.employer_id.to_string(),
+                title: job.title,
+                description: job.description,
+                skills_required: job.skills_required,
+                majors_accepted: job.majors_accepted,
+                location: job.location,
+                is_active: job.is_active,
+                salary_range_start: job.salary_range_start,
+                salary_range_end: job.salary_range_end,
+                datetime_created: job.datetime_created,
+                datetime_due: job.datetime_due,
+                min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
+                has_applied: Some(true),
+                photos: job.photos,
+            };
+            my_apps.push(MyApplicationData {
+                job: job_data,
+                status: app.status,
+                datetime_applied: app.datetime_applied,
+            });
+        }
+    }
+    Ok(Json(my_apps))
+}
+
+pub async fn get_single_job(
+    State(db): State<Surreal<Db>>,
+    Path(job_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<JobsData>, StatusCode> {
+    let job_rid = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let job: Option<Job> = db
+        .select(job_rid.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let job = job.ok_or(StatusCode::NOT_FOUND)?;
+
+    if job.employer_id != user_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let job_data = JobsData {
+        id: job.id.unwrap().to_string(),
+        employer_name: user.name,
+        employer_id: job.employer_id.to_string(),
+        title: job.title,
+        description: job.description,
+        skills_required: job.skills_required,
+        majors_accepted: job.majors_accepted,
+        location: job.location,
+        is_active: job.is_active,
+        salary_range_start: job.salary_range_start,
+        salary_range_end: job.salary_range_end,
+        datetime_created: job.datetime_created,
+        datetime_due: job.datetime_due,
+        min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
+        has_applied: None,
+        photos: job.photos,
+    };
+
+    Ok(Json(job_data))
+}
+// Replace these 4 functions in src/server_functions.rs
+
+pub async fn update_job(
+    State(db): State<Surreal<Db>>,
+    Path(job_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<UpdateJobRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let job_rid = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let job: Option<Job> = db
+        .select(job_rid.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let job = job.ok_or(StatusCode::NOT_FOUND)?;
+
+    if job.employer_id != user_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let res = db
+        .query("UPDATE $rid MERGE $data")
+        .bind(("rid", job_rid.clone()))
+        .bind(("data", data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Job updated successfully".to_string()))
+}
+
+pub async fn delete_job(
+    State(db): State<Surreal<Db>>,
+    Path(job_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<String>, StatusCode> {
+    let job_rid = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let job: Option<Job> = db
+        .select(job_rid.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let job = job.ok_or(StatusCode::NOT_FOUND)?;
+
+    if job.employer_id != user_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let res = db
+        .query("DELETE application WHERE out = $rid; DELETE $rid;")
+        .bind(("rid", job_id.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Job deleted successfully".to_string()))
+}
+
+pub async fn update_company(
+    State(db): State<Surreal<Db>>,
+    Path(company_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<UpdateCompanyRequest>,
+) -> Result<Json<String>, StatusCode> {
+    let comp_rid = RecordId::from_str(&company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let comp: Option<Company> = db
+        .select(comp_rid.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp = comp.ok_or(StatusCode::NOT_FOUND)?;
+
+    if comp.created_by != user_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let res = db
+        .query("UPDATE $rid MERGE $data")
+        .bind(("rid", comp_rid.clone()))
+        .bind(("data", data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Company updated successfully".to_string()))
+}
+
+pub async fn delete_company(
+    State(db): State<Surreal<Db>>,
+    Path(company_id): Path<String>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<String>, StatusCode> {
+    let comp_rid = RecordId::from_str(&company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let comp: Option<Company> = db
+        .select(comp_rid.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let comp = comp.ok_or(StatusCode::NOT_FOUND)?;
+
+    if comp.created_by != user_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let res = db
+        .query("DELETE works_for WHERE out = $rid; DELETE $rid;")
+        .bind(("rid", comp_rid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Company deleted successfully".to_string()))
 }

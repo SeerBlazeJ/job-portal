@@ -13,22 +13,22 @@ if (!isset($_GET["id"]) || empty($_GET["id"])) {
     );
 }
 
-function formatExp($days)
+function formatExp($months)
 {
-    if ($days === null || $days === "") {
+    if ($months === null || $months === "") {
         return "N/A";
     }
-    $days = (int) $days;
-    $months = floor($days / 30);
-    $rem_days = $days % 30;
+    $months = (int) $months;
+    $years = floor($months / 12);
+    $rem_months = $months % 12;
     $parts = [];
-    if ($months > 0) {
-        $parts[] = "{$months}m";
+    if ($years > 0) {
+        $parts[] = "{$years}y";
     }
-    if ($rem_days > 0) {
-        $parts[] = "{$rem_days}d";
+    if ($rem_months > 0) {
+        $parts[] = "{$rem_months}m";
     }
-    return empty($parts) ? "0d" : implode(" ", $parts);
+    return empty($parts) ? "0m" : implode(" ", $parts);
 }
 
 $targetId = $_GET["id"];
@@ -118,6 +118,39 @@ $profile = $apiResult["data"];
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if (!empty($profile["working_at"])): ?>
+                <div style="background: #f0fdf4; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 5px; color: #155724;">🏢 Company Affiliation</h4>
+                    <div style="font-size: 14px; color: #155724; display: flex; align-items: center; flex-wrap: wrap;">
+                        <strong><?php echo htmlspecialchars(
+                            $profile["working_at"]["designation"],
+                        ); ?></strong>
+                        &nbsp;at&nbsp;
+                        <a href="company.php?id=<?php echo urlencode(
+                            $profile["working_at"]["company_id"],
+                        ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
+                            <?php echo htmlspecialchars(
+                                $profile["working_at"]["company_name"],
+                            ); ?>
+                        </a>
+                        <?php if ($profile["working_at"]["is_verified"]): ?>
+                            <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: white;">✓ Verified</span>
+                        <?php else: ?>
+                            <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($profile["about_user"])): ?>
+            <div class="info-group">
+                <h3>About</h3>
+                <p style="color: #555; line-height: 1.6;"><?php echo nl2br(
+                    htmlspecialchars($profile["about_user"]),
+                ); ?></p>
+            </div>
+            <?php endif; ?>
 
             <div class="info-group">
                 <h3>Work Experience</h3>

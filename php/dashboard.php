@@ -40,9 +40,9 @@ if ($apiResult["success"]) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px;}
         .header h1 { color: #333; font-size: 28px; }
-        .header .user-info { display: flex; align-items: center; gap: 20px; }
+        .header .user-info { display: flex; align-items: center; gap: 15px; flex-wrap: wrap;}
         .header .username { color: #667eea; font-weight: 600; }
         .logout-btn { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.3s; }
         .logout-btn:hover { background: #c82333; }
@@ -71,7 +71,6 @@ if ($apiResult["success"]) {
         .candidate-card .email { color: #666; font-size: 0.9rem; margin-bottom: 15px; display: block; }
         .section-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
         .badge-candidate { background: #e2e8f0; color: #4a5568; }
-        .badge-job { background: #c6f6d5; color: #276749; }
     </style>
 </head>
 <body>
@@ -83,9 +82,11 @@ if ($apiResult["success"]) {
                     $userName,
                 ); ?>!</span>
                 <a href="profile.php" class="btn-create-job">👤 Profile</a>
-                <?php if ($dashboardMode === "candidates"): ?>
-                <a href="create_job.php" class="btn-create-job">+ Create Job</a>
+
+                <?php if (!$userProfile["is_finding_job"]): ?>
+                    <a href="create_job.php" class="btn-create-job">+ Create Job</a>
                 <?php endif; ?>
+
                 <form action="logout.php" method="POST" style="margin: 0;">
                     <button type="submit" class="logout-btn">Logout</button>
                 </form>
@@ -117,9 +118,16 @@ if ($apiResult["success"]) {
                                     $job["title"],
                                 ); ?></h3>
                                 <div class="employer">
-                                    🏢 <a href="user_details.php?id=<?php echo urlencode(
-                                        $job["employer_id"] ?? "",
-                                    ); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
+                                    <?php
+                                    $empId = $job["employer_id"] ?? "";
+                                    $isUser = strpos($empId, "User:") === 0;
+                                    $profileLink = $isUser
+                                        ? "user_details.php"
+                                        : "company.php";
+                                    ?>
+                                    🏢 <a href="<?php echo $profileLink; ?>?id=<?php echo urlencode(
+    $empId,
+); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
                                         <?php echo htmlspecialchars(
                                             $job["employer_name"],
                                         ); ?>
@@ -171,22 +179,13 @@ if ($apiResult["success"]) {
                                 <?php endif; ?>
 
                                 <div style="margin-top: 20px; text-align: right;">
-                                    <?php if (
-                                        isset($job["has_applied"]) &&
-                                        $job["has_applied"]
-                                    ): ?>
-                                        <button class="btn-create-job" style="background:#28a745; width:100%; text-align:center; border:none; cursor:default;" disabled>
-                                            Applied ✅
-                                        </button>
-                                    <?php else: ?>
-                                        <button class="btn-create-job" style="background:#667eea; width:100%; text-align:center; border:none;" onclick="applyForJob('<?php echo htmlspecialchars(
-                                            $job["id"],
-                                        ); ?>', '<?php echo htmlspecialchars(
+                                    <button class="btn-create-job" style="background:#667eea; width:100%; text-align:center; border:none;" onclick="applyForJob('<?php echo htmlspecialchars(
+                                        $job["id"],
+                                    ); ?>', '<?php echo htmlspecialchars(
     $job["employer_id"],
 ); ?>', this)">
-                                            Apply Now
-                                        </button>
-                                    <?php endif; ?>
+                                        Apply Now
+                                    </button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -223,7 +222,37 @@ if ($apiResult["success"]) {
                                     </div>
                                 </div>
 
-                                <?php if (
+                                <?php if (!empty($candidate["working_at"])): ?>
+                                    <div style="margin-bottom: 15px; font-size: 0.9rem; border-left: 3px solid #28a745; padding-left: 10px;">
+                                        <strong style="color: #28a745;">🏢 Company Affiliation:</strong><br>
+                                        <span style="color: #333; font-weight: 600;">
+                                            <?php echo htmlspecialchars(
+                                                $candidate["working_at"][
+                                                    "designation"
+                                                ],
+                                            ); ?>
+                                        </span>
+                                        at
+                                        <a href="company.php?id=<?php echo urlencode(
+                                            $candidate["working_at"][
+                                                "company_id"
+                                            ],
+                                        ); ?>" style="color: #667eea; text-decoration: none; font-weight: bold;">
+                                            <?php echo htmlspecialchars(
+                                                $candidate["working_at"][
+                                                    "company_name"
+                                                ],
+                                            ); ?>
+                                        </a>
+                                        <?php if (
+                                            $candidate["working_at"][
+                                                "is_verified"
+                                            ]
+                                        ): ?>
+                                            <span style="color: #28a745; font-size: 10px; margin-left: 5px;">(✓ Verified)</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php elseif (
                                     !empty($candidate["current_work"])
                                 ): ?>
                                     <div style="margin-bottom: 15px; font-size: 0.9rem;">
@@ -241,6 +270,14 @@ if ($apiResult["success"]) {
                                             ); ?>
                                         </span>
                                     </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($candidate["about_user"])): ?>
+                                    <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-style: italic;">
+                                        "<?php echo htmlspecialchars(
+                                            $candidate["about_user"],
+                                        ); ?>"
+                                    </p>
                                 <?php endif; ?>
 
                                 <?php if (!empty($candidate["education"])): ?>

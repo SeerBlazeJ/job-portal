@@ -7,33 +7,30 @@ if (!isAuthenticated()) {
     exit();
 }
 
-// PHP formats the display string
-function formatExp($days)
+function formatExp($months)
 {
-    if ($days === null || $days === "") {
+    if ($months === null || $months === "") {
         return "N/A";
     }
-    $days = (int) $days;
-    $months = floor($days / 30);
-    $rem_days = $days % 30;
+    $months = (int) $months;
+    $years = floor($months / 12);
+    $rem_months = $months % 12;
     $parts = [];
-    if ($months > 0) {
-        $parts[] = "{$months}m";
+    if ($years > 0) {
+        $parts[] = "{$years}y";
     }
-    if ($rem_days > 0) {
-        $parts[] = "{$rem_days}d";
+    if ($rem_months > 0) {
+        $parts[] = "{$rem_months}m";
     }
-    return empty($parts) ? "0d" : implode(" ", $parts);
+    return empty($parts) ? "0m" : implode(" ", $parts);
 }
 
 $token = getJWTToken();
 
-// Handle POST request (profile update via FormData)
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     header("Content-Type: application/json");
     $updateData = [];
 
-    // Map strings back from FormData payload
     if (isset($_POST["name"]) && !empty(trim($_POST["name"]))) {
         $updateData["name"] = trim($_POST["name"]);
     }
@@ -43,13 +40,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (isset($_POST["is_finding_job"])) {
         $updateData["is_finding_job"] = $_POST["is_finding_job"] === "1";
     }
+    if (isset($_POST["about_user"])) {
+        $updateData["about_user"] = trim($_POST["about_user"]);
+    }
 
     if (!empty($_POST["skills"])) {
         $updateData["skills"] = array_values(
             array_filter(json_decode($_POST["skills"], true)),
         );
     }
-
     if (!empty($_POST["education"])) {
         $updateData["education"] = json_decode($_POST["education"], true);
     }
@@ -59,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $updateData["current_work"] = [
             "worked_as" => trim($cw["worked_as"]),
             "company" => trim($cw["company"]),
-            "exp" => (int) $cw["exp_m"] * 30 + (int) $cw["exp_d"],
+            "exp" => (int) $cw["exp_y"] * 12 + (int) $cw["exp_m"],
         ];
     }
 
@@ -70,13 +69,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $expData[] = [
                 "worked_as" => trim($work["worked_as"]),
                 "company" => trim($work["company"]),
-                "exp" => (int) $work["exp_m"] * 30 + (int) $work["exp_d"],
+                "exp" => (int) $work["exp_y"] * 12 + (int) $work["exp_m"],
             ];
         }
         $updateData["previous_experience"] = $expData;
     }
 
-    // Handle File Uploads
     $uploadDir = "uploads/";
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0777, true);
@@ -123,7 +121,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     $result = callRustAPI("/update-profile", "POST", $updateData, $token);
-
     if ($result["success"]) {
         echo json_encode([
             "status" => "success",
@@ -149,11 +146,10 @@ if (!$profileResult["success"]) {
 
 $profile = $profileResult["data"];
 
-// PHP pre-processes total days into separate months/days for the JavaScript state
 if (isset($profile["current_work"]) && is_array($profile["current_work"])) {
-    $totalDays = (int) ($profile["current_work"]["exp"] ?? 0);
-    $profile["current_work"]["exp_m"] = floor($totalDays / 30);
-    $profile["current_work"]["exp_d"] = $totalDays % 30;
+    $totalMonths = (int) ($profile["current_work"]["exp"] ?? 0);
+    $profile["current_work"]["exp_y"] = floor($totalMonths / 12);
+    $profile["current_work"]["exp_m"] = $totalMonths % 12;
 }
 
 if (
@@ -161,9 +157,9 @@ if (
     is_array($profile["previous_experience"])
 ) {
     foreach ($profile["previous_experience"] as &$exp) {
-        $totalDays = (int) ($exp["exp"] ?? 0);
-        $exp["exp_m"] = floor($totalDays / 30);
-        $exp["exp_d"] = $totalDays % 30;
+        $totalMonths = (int) ($exp["exp"] ?? 0);
+        $exp["exp_y"] = floor($totalMonths / 12);
+        $exp["exp_m"] = $totalMonths % 12;
     }
 }
 ?>
@@ -180,7 +176,7 @@ if (
         .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .header h1 { color: #333; font-size: 28px; }
         .header .nav-links { display: flex; gap: 15px; align-items: center; }
-        .btn { padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.3s; }
+        .btn { padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.3s; display: inline-block; }
         .btn-secondary { background: #6c757d; color: white; }
         .profile-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
         .profile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
@@ -193,7 +189,8 @@ if (
         .info-value { color: #333; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; font-family: inherit; }
+        .form-group textarea { min-height: 100px; resize: vertical; }
         .toggle-switch-container { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
         .switch { position: relative; display: inline-block; width: 60px; height: 30px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -215,7 +212,7 @@ if (
         .alert.show { display: block; }
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 20px; border: none; border-radius: 5px; cursor: pointer;}
+        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
         .edit-mode { display: none; }
         .view-mode { display: block; }
         .helper-text { font-size: 12px; color: #666; margin-top: 5px; }
@@ -224,8 +221,8 @@ if (
         .status-poster { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .empty-state { color: #999; font-style: italic; }
         .edu-level-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #667eea; color: white; }
-        .profile-tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
-        .profile-tab { padding: 12px 25px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .profile-tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; overflow-x: auto; }
+        .profile-tab { padding: 12px 25px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; white-space: nowrap; }
         .profile-tab:hover { color: #667eea; }
         .profile-tab.active { color: #667eea; border-bottom-color: #667eea; }
         .tab-content { display: none; }
@@ -254,16 +251,42 @@ if (
 
             <div class="profile-tabs view-mode">
                 <div class="profile-tab active" onclick="switchTab('profile')">Profile Info</div>
-                <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')" style="display: <?php echo $profile[
-                    "is_finding_job"
-                ]
-                    ? "none"
-                    : "block"; ?>;">My Posted Jobs</div>
+                <?php if (!$profile["is_finding_job"]): ?>
+                    <div class="profile-tab" id="tab-companies" onclick="switchTab('companies')">My Companies</div>
+                    <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')">My Posted Jobs</div>
+                <?php else: ?>
+                    <div class="profile-tab" id="tab-my-apps" onclick="switchTab('apps')">My Applications</div>
+                <?php endif; ?>
             </div>
 
             <div id="alert" class="alert"></div>
 
             <div id="view-mode" class="view-mode tab-content active">
+
+                <?php if (!empty($profile["working_at"])): ?>
+                    <div style="background: #f0fdf4; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
+                        <h4 style="margin: 0 0 5px; color: #155724;">🏢 Company Affiliation</h4>
+                        <div style="font-size: 14px; color: #155724; display: flex; align-items: center; flex-wrap: wrap;">
+                            <strong><?php echo htmlspecialchars(
+                                $profile["working_at"]["designation"],
+                            ); ?></strong>
+                            &nbsp;at&nbsp;
+                            <a href="company.php?id=<?php echo urlencode(
+                                $profile["working_at"]["company_id"],
+                            ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
+                                <?php echo htmlspecialchars(
+                                    $profile["working_at"]["company_name"],
+                                ); ?>
+                            </a>
+                            <?php if ($profile["working_at"]["is_verified"]): ?>
+                                <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: white;">✓ Verified</span>
+                            <?php else: ?>
+                                <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <div style="text-align: center; margin-bottom: 30px;">
                     <?php if (!empty($profile["profile_picture"])): ?>
                         <img src="<?php echo htmlspecialchars(
@@ -305,6 +328,15 @@ if (
                         </div>
                     </div>
                 </div>
+
+                <?php if (!empty($profile["about_user"])): ?>
+                <div class="profile-section">
+                    <h3>📝 About Me</h3>
+                    <p style="color: #555; line-height: 1.6;"><?php echo nl2br(
+                        htmlspecialchars($profile["about_user"]),
+                    ); ?></p>
+                </div>
+                <?php endif; ?>
 
                 <div class="profile-section">
                     <h3>🎯 Skills</h3>
@@ -397,13 +429,101 @@ if (
                 </div>
             </div>
 
+            <div id="content-companies" class="view-mode tab-content">
+                <div class="profile-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">🏢 My Affiliated Companies</h3>
+                        <a href="create_company.php" class="btn btn-primary" style="width: auto; margin: 0; padding: 10px 20px;">➕ Register New Company</a>
+                    </div>
+
+                    <?php if (!empty($profile["working_at"])): ?>
+                        <div class="posted-job-card" style="display: flex; gap: 20px; align-items: center;">
+                            <div style="width: 60px; height: 60px; border-radius: 8px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 24px;">🏢</div>
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 5px;">
+                                    <a href="company.php?id=<?php echo urlencode(
+                                        $profile["working_at"]["company_id"],
+                                    ); ?>" style="text-decoration: none; color: #333;">
+                                        <?php echo htmlspecialchars(
+                                            $profile["working_at"][
+                                                "company_name"
+                                            ],
+                                        ); ?>
+                                    </a>
+                                </h3>
+                                <div style="color: #666; font-size: 14px;">
+                                    <strong>Role:</strong> <?php echo htmlspecialchars(
+                                        $profile["working_at"]["designation"],
+                                    ); ?>
+                                    <?php if (
+                                        $profile["working_at"]["is_verified"]
+                                    ): ?>
+                                        <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: #f0fdf4;">✓ Verified</span>
+                                    <?php else: ?>
+                                        <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                                <a href="company.php?id=<?php echo urlencode(
+                                    $profile["working_at"]["company_id"],
+                                ); ?>" class="btn btn-secondary">View Profile</a>
+                                <?php if (
+                                    isset($profile["working_at"]["is_owner"]) &&
+                                    $profile["working_at"]["is_owner"]
+                                ): ?>
+                                    <a href="edit_company.php?id=<?php echo urlencode(
+                                        $profile["working_at"]["company_id"],
+                                    ); ?>" class="btn btn-secondary" style="background:#17a2b8; text-decoration:none;">Edit</a>
+                                    <button onclick="deleteCompany('<?php echo htmlspecialchars(
+                                        $profile["working_at"]["company_id"],
+                                    ); ?>')" class="btn btn-secondary" style="background:#dc3545; border:none; cursor:pointer;">Delete</button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="empty-state" style="text-align: center; padding: 40px 20px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ddd;">
+                            <div style="font-size: 40px; margin-bottom: 10px;">🏢</div>
+                            <p>You are not currently affiliated with any company.</p>
+                            <p style="font-size: 13px; color: #888; margin-top: 5px;">Register your company to start posting jobs and managing employees.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div id="content-jobs" class="view-mode tab-content">
                 <div id="my-jobs-list">
                     <p>Loading your job posts...</p>
                 </div>
             </div>
 
+            <div id="content-apps" class="view-mode tab-content">
+                <div class="profile-section">
+                    <h3 style="margin-bottom: 20px;">📝 My Job Applications</h3>
+                    <div id="my-apps-list">
+                        <p>Loading your applications...</p>
+                    </div>
+                </div>
+            </div>
+
             <div id="edit-mode" class="edit-mode">
+                <div class="profile-section" style="background: #f8f9fa; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;">
+                    <h3>🏢 Company Affiliation</h3>
+                    <?php if (!empty($profile["working_at"])): ?>
+                        <p style="font-size: 14px; margin-bottom: 10px;">You are currently affiliated with <strong><?php echo htmlspecialchars(
+                            $profile["working_at"]["company_name"],
+                        ); ?></strong>.</p>
+                        <a href="company.php?id=<?php echo urlencode(
+                            $profile["working_at"]["company_id"],
+                        ); ?>" class="btn btn-secondary" style="display:inline-block; background:#6c757d; text-decoration:none;">View Company Page</a>
+                    <?php else: ?>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 10px;">You are not currently linked to any company.</p>
+                        <p style="font-size: 12px; color: #888;">If you are an employer, you can search and join your company, or create a new one from your dashboard.</p>
+                        <a href="dashboard.php" class="btn btn-secondary" style="display:inline-block; background:#17a2b8; text-decoration:none;">Back to Dashboard</a>
+                    <?php endif; ?>
+                </div>
+
                 <form id="profile-form">
                     <div class="profile-section">
                         <h3>📋 Basic Information & Files</h3>
@@ -428,6 +548,12 @@ if (
                             <input type="email" id="email" name="email" value="<?php echo htmlspecialchars(
                                 $profile["email"],
                             ); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="about_user">About Me (Brief Bio)</label>
+                            <textarea id="about_user" name="about_user" placeholder="Tell us a little about yourself..."><?php echo htmlspecialchars(
+                                $profile["about_user"] ?? "",
+                            ); ?></textarea>
                         </div>
                         <div class="form-group">
                             <label>Primary Role</label>
@@ -529,10 +655,17 @@ if (
             if (tab === 'profile') {
                 document.querySelector('.profile-tab:nth-child(1)').classList.add('active');
                 document.getElementById('view-mode').classList.add('active');
-            } else {
+            } else if (tab === 'companies') {
+                document.getElementById('tab-companies').classList.add('active');
+                document.getElementById('content-companies').classList.add('active');
+            } else if (tab === 'jobs') {
                 document.getElementById('tab-my-jobs').classList.add('active');
                 document.getElementById('content-jobs').classList.add('active');
                 loadMyJobs();
+            } else if (tab === 'apps') {
+                document.getElementById('tab-my-apps').classList.add('active');
+                document.getElementById('content-apps').classList.add('active');
+                loadMyApplications();
             }
         }
 
@@ -540,7 +673,8 @@ if (
             const container = document.getElementById('my-jobs-list');
             try {
                 const res = await fetch('employer_api.php?action=my_jobs');
-                const result = await res.json();
+                const text = await res.text();
+                const result = JSON.parse(text);
 
                 if (result.success && result.data) {
                     if (result.data.length === 0) {
@@ -554,7 +688,11 @@ if (
                             <div class="posted-job-card">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <h3 style="color:#333; margin:0;">${job.title}</h3>
-                                    <button class="btn btn-secondary" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
+                                    <div>
+                                        <a href="edit_job.php?id=${encodeURIComponent(job.id)}" class="btn btn-secondary" style="background:#17a2b8; padding: 6px 12px; font-size:12px; text-decoration:none;">Edit</a>
+                                        <button onclick="deleteJob('${job.id}')" class="btn btn-secondary" style="background:#dc3545; padding: 6px 12px; font-size:12px; margin-right:10px; border:none; cursor:pointer;">Delete</button>
+                                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
+                                    </div>
                                 </div>
                                 <p style="color:#666; font-size:14px; margin-top:8px;">📍 ${job.location} | 💰 $${job.salary_range_start} - $${job.salary_range_end}</p>
                                 <div id="applicants-${job.id}" style="display:none; margin-top: 20px; border-top: 2px dashed #e0e0e0; padding-top: 20px;">
@@ -568,8 +706,39 @@ if (
                     container.innerHTML = '<p class="empty-state">Failed to load jobs.</p>';
                 }
             } catch (e) {
-                container.innerHTML = '<p class="empty-state">Error loading jobs.</p>';
+                container.innerHTML = '<p class="empty-state">Error loading jobs. Session may have expired.</p>';
             }
+        }
+
+        async function deleteJob(jobId) {
+            if (!confirm("Are you sure you want to permanently delete this job post?")) return;
+            try {
+                const res = await fetch(`employer_api.php?action=delete_job&job_id=${encodeURIComponent(jobId)}`);
+                const text = await res.text();
+                const result = JSON.parse(text);
+
+                if (result.success || result.status === 'success') {
+                    loadMyJobs();
+                } else {
+                    alert('Failed to delete job: ' + (result.message || 'Unknown Error'));
+                }
+            } catch(e) { alert('Error securely reaching server to delete job.'); }
+        }
+
+        async function deleteCompany(companyId) {
+            if (!confirm("WARNING: Are you sure you want to permanently delete this company? This cannot be undone.")) return;
+            try {
+                const res = await fetch(`employer_api.php?action=delete_company&company_id=${encodeURIComponent(companyId)}`);
+                const text = await res.text();
+                const result = JSON.parse(text);
+
+                if (result.success || result.status === 'success') {
+                    alert("Company deleted.");
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete company: ' + (result.message || 'Unknown Error'));
+                }
+            } catch(e) { alert('Error securely reaching server to delete company.'); }
         }
 
         async function toggleApplicants(jobId, btn) {
@@ -589,7 +758,8 @@ if (
 
             try {
                 const res = await fetch('employer_api.php?action=applicants&job_id=' + encodeURIComponent(jobId));
-                const result = await res.json();
+                const text = await res.text();
+                const result = JSON.parse(text);
 
                 if (result.success && result.data) {
                     if (result.data.length === 0) {
@@ -602,18 +772,26 @@ if (
                         const dateObj = new Date(app.datetime_applied);
                         const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
 
+                        const statusSelect = `
+                            <select onchange="updateAppStatus('${jobId}', '${app.user.id}', this.value)" style="padding: 4px; font-size: 12px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc;">
+                                <option value="Pending" ${app.status.toLowerCase() === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Accepted" ${app.status.toLowerCase() === 'accepted' ? 'selected' : ''}>Accepted</option>
+                                <option value="Rejected" ${app.status.toLowerCase() === 'rejected' ? 'selected' : ''}>Rejected</option>
+                            </select>
+                        `;
+
                         html += `
                             <div class="applicant-card">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <strong style="font-size: 16px;">${app.user.name}</strong>
-                                    <span style="font-size:12px; font-weight:bold; background:#e2e8f0; color:#4a5568; padding:4px 10px; border-radius:12px; text-transform:uppercase;">${app.status}</span>
+                                    ${statusSelect}
                                 </div>
                                 <div style="font-size:14px; color:#555; margin-top:8px;">
                                     📧 <a href="mailto:${app.user.email}" style="color:#667eea; text-decoration:none;">${app.user.email}</a>
                                     <br>🕒 Applied on ${prettyDate}
                                 </div>
                                 <div style="margin-top:12px;">
-                                    <a href="user_details.php?id=${encodeURIComponent(app.user.id)}" target="_blank" class="btn" style="background:#667eea; color:white; padding:8px 15px; font-size:13px;">View Full Profile ↗</a>
+                                    <a href="user_details.php?id=${encodeURIComponent(app.user.id)}" target="_blank" class="btn" style="background:#667eea; color:white; padding:8px 15px; font-size:13px; display:inline-block; text-align:center; text-decoration:none;">View Full Profile ↗</a>
                                 </div>
                             </div>
                         `;
@@ -623,7 +801,68 @@ if (
                     container.innerHTML = '<p class="empty-state">Failed to load applicants.</p>';
                 }
             } catch (e) {
-                container.innerHTML = '<p class="empty-state">Error loading applicants.</p>';
+                container.innerHTML = '<p class="empty-state">Error parsing applicant data.</p>';
+            }
+        }
+
+        async function updateAppStatus(jobId, applicantId, status) {
+            try {
+                const res = await fetch('employer_api.php?action=update_application_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, applicant_id: applicantId, status: status })
+                });
+                const result = await res.json();
+                if (!result.success && result.status !== 'success') {
+                    alert('Failed to update status');
+                }
+            } catch(e) {
+                alert('Error updating status');
+            }
+        }
+
+        async function loadMyApplications() {
+            const container = document.getElementById('my-apps-list');
+            try {
+                const res = await fetch('employer_api.php?action=my_applications');
+                const text = await res.text();
+                const result = JSON.parse(text);
+
+                if (result.success && result.data) {
+                    if (result.data.length === 0) {
+                        container.innerHTML = '<p class="empty-state">You have not applied to any jobs yet.</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    result.data.forEach(app => {
+                        let statusColor = app.status.toLowerCase() === 'accepted' ? '#28a745' : (app.status.toLowerCase() === 'rejected' ? '#dc3545' : '#856404');
+                        let statusBg = app.status.toLowerCase() === 'accepted' ? '#d4edda' : (app.status.toLowerCase() === 'rejected' ? '#f8d7da' : '#fff3cd');
+
+                        const dateObj = new Date(app.datetime_applied);
+                        const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
+
+                        html += `
+                            <div class="posted-job-card" style="border-left: 4px solid ${statusColor};">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h3 style="color:#333; margin:0;">${app.job.title}</h3>
+                                    <span style="font-size:12px; font-weight:bold; background:${statusBg}; color:${statusColor}; padding:5px 12px; border-radius:15px;">${app.status.toUpperCase()}</span>
+                                </div>
+                                <div style="color:#666; font-size:14px; margin-top:8px;">
+                                    🏢 ${app.job.employer_name} | 📍 ${app.job.location}
+                                </div>
+                                <div style="color:#888; font-size:12px; margin-top:10px;">
+                                    Applied on: ${prettyDate}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<p class="empty-state">Failed to load applications.</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p class="empty-state">Error loading applications.</p>';
             }
         }
 
@@ -669,8 +908,8 @@ if (
             const workedAs = hasWork ? currentWork.worked_as || '' : '';
             const company = hasWork ? currentWork.company || '' : '';
 
+            const years = hasWork ? currentWork.exp_y || 0 : 0;
             const months = hasWork ? currentWork.exp_m || 0 : 0;
-            const days = hasWork ? currentWork.exp_d || 0 : 0;
 
             container.innerHTML = `
                 <div class="form-group" style="margin-bottom: 10px;">
@@ -691,8 +930,8 @@ if (
                     <div class="form-group">
                         <label>Duration of Experience *</label>
                         <div style="display: flex; gap: 10px;">
-                            <input type="number" id="cw_exp_m" min="0" value="${months}" placeholder="Months" style="flex: 1;">
-                            <input type="number" id="cw_exp_d" min="0" max="29" value="${days}" placeholder="Days" style="flex: 1;">
+                            <input type="number" id="cw_exp_y" min="0" value="${years}" placeholder="Years" style="flex: 1;">
+                            <input type="number" id="cw_exp_m" min="0" max="11" value="${months}" placeholder="Months" style="flex: 1;">
                         </div>
                     </div>
                 </div>
@@ -712,8 +951,8 @@ if (
                 return;
             }
             previousExperience.forEach((exp, index) => {
+                const years = exp.exp_y || 0;
                 const months = exp.exp_m || 0;
-                const days = exp.exp_d || 0;
 
                 const item = document.createElement('div');
                 item.className = 'education-form-item';
@@ -730,8 +969,8 @@ if (
                     <div class="form-group">
                         <label>Duration of Experience *</label>
                         <div style="display: flex; gap: 10px;">
-                            <input type="number" class="exp-m" min="0" value="${months}" placeholder="Months" required style="flex: 1;">
-                            <input type="number" class="exp-d" min="0" max="29" value="${days}" placeholder="Days" required style="flex: 1;">
+                            <input type="number" class="exp-y" min="0" value="${years}" placeholder="Years" required style="flex: 1;">
+                            <input type="number" class="exp-m" min="0" max="11" value="${months}" placeholder="Months" required style="flex: 1;">
                         </div>
                     </div>
                 `;
@@ -745,7 +984,7 @@ if (
         }
 
         document.getElementById('add-experience-btn').addEventListener('click', () => {
-            previousExperience.push({ worked_as: '', company: '', exp_m: 0, exp_d: 0 });
+            previousExperience.push({ worked_as: '', company: '', exp_y: 0, exp_m: 0 });
             renderPreviousExperience();
         });
 
@@ -842,8 +1081,8 @@ if (
                 cwData = {
                     worked_as: document.getElementById('cw_worked_as').value.trim(),
                     company: document.getElementById('cw_company').value.trim(),
-                    exp_m: parseInt(document.getElementById('cw_exp_m').value || 0),
-                    exp_d: parseInt(document.getElementById('cw_exp_d').value || 0)
+                    exp_y: parseInt(document.getElementById('cw_exp_y').value || 0),
+                    exp_m: parseInt(document.getElementById('cw_exp_m').value || 0)
                 };
             }
 
@@ -856,8 +1095,8 @@ if (
                     updatedExperience.push({
                         worked_as: workedAs,
                         company: company,
-                        exp_m: parseInt(item.querySelector('.exp-m').value || 0),
-                        exp_d: parseInt(item.querySelector('.exp-d').value || 0)
+                        exp_y: parseInt(item.querySelector('.exp-y').value || 0),
+                        exp_m: parseInt(item.querySelector('.exp-m').value || 0)
                     });
                 }
             });
@@ -870,11 +1109,11 @@ if (
                 if (level && major && institution) updatedEducation.push({ education: level, major: major, edu_institution: institution });
             });
 
-            // Convert to FormData for file uploads
             const fd = new FormData();
             fd.append('name', document.getElementById('name').value.trim());
             fd.append('email', document.getElementById('email').value.trim());
             fd.append('is_finding_job', document.getElementById('is_finding_job').checked ? '1' : '0');
+            fd.append('about_user', document.getElementById('about_user').value.trim());
 
             if (skills.length > 0) fd.append('skills', JSON.stringify(skills));
             if (updatedEducation.length > 0) fd.append('education', JSON.stringify(updatedEducation));
@@ -893,10 +1132,11 @@ if (
             try {
                 const response = await fetch('profile.php', {
                     method: 'POST',
-                    body: fd // Do NOT set Content-Type, fetch will auto-set multipart/form-data boundary
+                    body: fd
                 });
 
-                const result = await response.json();
+                const text = await response.text();
+                const result = JSON.parse(text);
 
                 if (result.status === 'success') {
                     showAlert('Profile updated successfully! Reloading...', 'success');
@@ -907,7 +1147,7 @@ if (
                     saveBtn.textContent = '💾 Save Changes';
                 }
             } catch (error) {
-                showAlert('Failed to update profile. Please try again.', 'error');
+                showAlert('Failed to parse update request properly.', 'error');
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 Save Changes';
             }

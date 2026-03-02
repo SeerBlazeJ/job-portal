@@ -15,11 +15,14 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
+Job seeker/emplyer at registration only -> if employer, add company name
+Comany name, minimum experience in posts
+change in job application status
+research in earnings
 Implement search
 Implement Chat System
 Implement Filters
 Implement Agentic features + AI based job finding
-Implement Company Profiles
 */
 
 #[tokio::main]
@@ -38,7 +41,8 @@ async fn main() {
     // Public routes (no auth required)
     let public_routes = Router::new()
         .route("/signup", post(signup))
-        .route("/signin", post(signin));
+        .route("/signin", post(signin))
+        .route("/search-companies", get(search_companies));
 
     // Protected routes (auth required)
     let protected_routes = Router::new()
@@ -50,6 +54,22 @@ async fn main() {
         .route("/my-jobs", get(get_my_jobs))
         .route("/job-applicants/{job_id}", get(get_job_applicants))
         .route("/apply", post(apply_for_job))
+        .route("/create-company", post(create_company))
+        .route(
+            "/company/{id}",
+            get(get_company).put(update_company).delete(delete_company),
+        )
+        .route(
+            "/job/{id}",
+            get(get_single_job).put(update_job).delete(delete_job),
+        )
+        .route("/join-company", post(join_company))
+        .route("/verify-employee", post(verify_employee))
+        .route(
+            "/update-application-status",
+            post(update_application_status),
+        )
+        .route("/my-applications", get(get_my_applications))
         .route_layer(middleware::from_fn(auth_middleware));
 
     // Combine them

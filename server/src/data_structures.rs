@@ -13,6 +13,7 @@ pub enum EduLevel {
     Masters = 4,
     PhD = 5,
 }
+
 impl FromStr for EduLevel {
     type Err = ();
 
@@ -57,6 +58,7 @@ impl std::fmt::Display for EduLevel {
         }
     }
 }
+
 fn deserialize_edu_level<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: Deserializer<'de>,
@@ -93,7 +95,9 @@ pub struct SignupData {
     pub email: String,
     pub uid: String,
     pub pword: String,
+    pub is_finding_job: bool,
 }
+
 #[derive(Deserialize)]
 pub struct SigninData {
     pub uid: String,
@@ -118,6 +122,8 @@ pub struct UserProfile {
     pub previous_experience: Option<Vec<Work>>,
     pub profile_picture: Option<String>,
     pub resume: Option<String>,
+    pub about_user: Option<String>,
+    pub working_at: Option<UserCompanyData>,
 }
 
 #[derive(Serialize)]
@@ -140,6 +146,7 @@ pub struct UpdateProfileRequest {
     pub previous_experience: Option<Vec<Work>>,
     pub profile_picture: Option<String>,
     pub resume: Option<String>,
+    pub about_user: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -170,6 +177,7 @@ pub struct User {
     pub previous_experience: Option<Vec<Work>>,
     pub profile_picture: Option<String>,
     pub resume: Option<String>,
+    pub about_user: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -192,8 +200,8 @@ pub struct JobFilters {
 pub struct JobsData {
     pub id: String,
     pub employer_name: String,
-    pub title: String,
     pub employer_id: String,
+    pub title: String,
     pub description: String,
     pub skills_required: Vec<String>,
     pub majors_accepted: Vec<String>,
@@ -288,6 +296,170 @@ impl From<User> for UserProfile {
             current_work: c.current_work,
             profile_picture: c.profile_picture,
             resume: c.resume,
+            about_user: c.about_user,
+            working_at: None,
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Company {
+    pub id: Option<RecordId>,
+    pub created_by: RecordId,
+    pub name: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct CompanyData {
+    pub id: String,
+    pub created_by: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+}
+
+impl From<Company> for CompanyData {
+    fn from(c: Company) -> Self {
+        Self {
+            id: c.id.unwrap().to_string(),
+            created_by: c.created_by.to_string(),
+            name: c.name,
+            description: c.description,
+            location: c.location,
+            logo: c.logo,
+            website: c.website,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct works_for {
+    pub id: Option<RecordId>,
+    #[serde(rename = "in")]
+    pub user: RecordId,
+    pub out: RecordId,
+    pub designation: String,
+    pub employee_since: i64,
+    pub is_verified: bool,
+}
+
+#[derive(Deserialize)]
+pub struct CreateCompanyRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub designation: String,
+}
+
+#[derive(Deserialize)]
+pub struct JoinCompanyRequest {
+    pub company_id: String,
+    pub designation: String,
+}
+
+#[derive(Serialize)]
+pub struct EmployeeData {
+    pub user: UserProfile,
+    pub designation: String,
+    pub employee_since: i64,
+    pub is_verified: bool,
+}
+
+#[derive(Serialize)]
+pub struct CompanyProfileResponse {
+    pub company: CompanyData,
+    pub employees: Vec<EmployeeData>,
+    pub is_employee: bool,
+    pub is_owner: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UserCompanyData {
+    pub company_id: String,
+    pub company_name: String,
+    pub designation: String,
+    pub is_verified: bool,
+    pub is_owner: bool,
+}
+
+#[derive(Deserialize)]
+pub struct WorksForQueryResult {
+    pub company_id: RecordId,
+    pub company_name: String,
+    pub creator_id: RecordId,
+    pub designation: String,
+    pub is_verified: bool,
+}
+
+// Replace these at the bottom of src/data_structures.rs
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateCompanyRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateJobRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skills_required: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub majors_accepted: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub salary_range_start: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub salary_range_end: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub datetime_due: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_ed_lvl: Option<u8>, // <-- Change this from Option<EduLevel> to Option<u8>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photos: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct VerifyEmployeeRequest {
+    pub company_id: String,
+    pub user_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateApplicationStatusRequest {
+    pub job_id: String,
+    pub applicant_id: String,
+    pub status: String,
+}
+
+#[derive(Serialize)]
+pub struct MyApplicationData {
+    pub job: JobsData,
+    pub status: String,
+    pub datetime_applied: String,
+}
+#[derive(Deserialize)]
+pub struct SearchQuery {
+    pub q: String,
 }
