@@ -15,9 +15,6 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-Job seeker/emplyer at registration only -> if employer, add company name
-Comany name, minimum experience in posts
-change in job application status
 research in earnings
 Implement search
 Implement Chat System

@@ -96,7 +96,21 @@ pub async fn home(
     let user = get_user_from_uid(claims.uid, &db).await?;
     if user.is_finding_job {
         let (skills_vec, edu_info_vec) = get_edu_skill_info(&user).await?;
-        let mut jobs: Vec<JobsData> = get_jobs_data(skills_vec, edu_info_vec, &db).await?;
+
+        // Calculate total experience in months
+        let mut total_exp_months: u16 = 0;
+        if let Some(cw) = &user.current_work {
+            total_exp_months += cw.exp;
+        }
+        if let Some(pe) = &user.previous_experience {
+            for work in pe {
+                total_exp_months += work.exp;
+            }
+        }
+
+        // Pass total_exp_months to get_jobs_data
+        let mut jobs: Vec<JobsData> =
+            get_jobs_data(skills_vec, edu_info_vec, total_exp_months, &db).await?;
 
         if let Some(user_id) = &user.id {
             let mut response = db
@@ -161,14 +175,19 @@ pub async fn get_user_info(
 async fn get_jobs_data(
     skills_vec: Option<Vec<String>>,
     edu_info_vec: Option<Vec<(u8, String)>>,
+    total_exp_months: u16, // <-- ADDED
     db: &Surreal<Db>,
 ) -> Result<Vec<JobsData>, StatusCode> {
     let mut unique_jobs: HashMap<String, (Job, f32)> = HashMap::new();
 
+    // Reusable filter string for readability (though we'll embed it in multi-line strings below)
+    // AND (min_experience <= $exp OR min_experience = NONE)
+
     match (skills_vec, edu_info_vec) {
         (None, None) => {
             let jobs: Vec<Job> = db
-                .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 20")
+                .query("SELECT * FROM jobs WHERE is_active = true AND (min_experience <= $exp OR min_experience = NONE) ORDER BY rand() LIMIT 20")
+                .bind(("exp", total_exp_months)) // <-- BOUND HERE
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .take(0)
@@ -187,9 +206,11 @@ async fn get_jobs_data(
                     "SELECT * FROM jobs
                      WHERE is_active = true
                      AND skills_required CONTAINSANY $skills
+                     AND (min_experience <= $exp OR min_experience = NONE)
                      ORDER BY rand() LIMIT 30",
                 )
                 .bind(("skills", skills.clone()))
+                .bind(("exp", total_exp_months)) // <-- BOUND HERE
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .take(0)
@@ -204,7 +225,13 @@ async fn get_jobs_data(
 
             if unique_jobs.len() < 15 {
                 let random_jobs: Vec<Job> = db
-                    .query("SELECT * FROM jobs WHERE is_active = true ORDER BY rand() LIMIT 10")
+                    .query(
+                        "SELECT * FROM jobs
+                         WHERE is_active = true
+                         AND (min_experience <= $exp OR min_experience = NONE)
+                         ORDER BY rand() LIMIT 10",
+                    )
+                    .bind(("exp", total_exp_months)) // <-- BOUND HERE
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
@@ -232,10 +259,12 @@ async fn get_jobs_data(
                      WHERE is_active = true
                      AND min_ed_lvl <= $edu_level
                      AND majors_accepted CONTAINSANY $majors
+                     AND (min_experience <= $exp OR min_experience = NONE)
                      ORDER BY rand() LIMIT 30",
                 )
                 .bind(("edu_level", highest_edu_level))
                 .bind(("majors", majors.clone()))
+                .bind(("exp", total_exp_months)) // <-- BOUND HERE
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .take(0)
@@ -254,9 +283,11 @@ async fn get_jobs_data(
                         "SELECT * FROM jobs
                          WHERE is_active = true
                          AND min_ed_lvl <= $edu_level
+                         AND (min_experience <= $exp OR min_experience = NONE)
                          ORDER BY rand() LIMIT 15",
                     )
                     .bind(("edu_level", highest_edu_level))
+                    .bind(("exp", total_exp_months)) // <-- BOUND HERE
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
@@ -285,11 +316,13 @@ async fn get_jobs_data(
                      AND skills_required CONTAINSANY $skills
                      AND min_ed_lvl <= $edu_level
                      AND majors_accepted CONTAINSANY $majors
+                     AND (min_experience <= $exp OR min_experience = NONE)
                      ORDER BY rand() LIMIT 30",
                 )
                 .bind(("skills", skills.clone()))
                 .bind(("edu_level", highest_edu_level))
                 .bind(("majors", majors.clone()))
+                .bind(("exp", total_exp_months)) // <-- BOUND HERE
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .take(0)
@@ -311,10 +344,12 @@ async fn get_jobs_data(
                          WHERE is_active = true
                          AND skills_required CONTAINSANY $skills
                          AND min_ed_lvl <= $edu_level
+                         AND (min_experience <= $exp OR min_experience = NONE)
                          ORDER BY rand() LIMIT 20",
                     )
                     .bind(("skills", skills.clone()))
                     .bind(("edu_level", highest_edu_level))
+                    .bind(("exp", total_exp_months)) // <-- BOUND HERE
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
@@ -336,10 +371,12 @@ async fn get_jobs_data(
                          WHERE is_active = true
                          AND min_ed_lvl <= $edu_level
                          AND majors_accepted CONTAINSANY $majors
+                         AND (min_experience <= $exp OR min_experience = NONE)
                          ORDER BY rand() LIMIT 15",
                     )
                     .bind(("edu_level", highest_edu_level))
                     .bind(("majors", majors.clone()))
+                    .bind(("exp", total_exp_months)) // <-- BOUND HERE
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
@@ -360,9 +397,11 @@ async fn get_jobs_data(
                         "SELECT * FROM jobs
                          WHERE is_active = true
                          AND min_ed_lvl <= $edu_level
+                         AND (min_experience <= $exp OR min_experience = NONE)
                          ORDER BY rand() LIMIT 10",
                     )
                     .bind(("edu_level", highest_edu_level))
+                    .bind(("exp", total_exp_months)) // <-- BOUND HERE
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                     .take(0)
@@ -407,6 +446,9 @@ async fn get_jobs_data(
                 employer_name: name.unwrap_or_default(),
                 employer_id: job.employer_id.to_string(),
                 title: job.title,
+                company_name: job.company_name,
+                company_id: job.company_id.clone().map(|id| id.to_string()),
+                min_experience: job.min_experience,
                 description: job.description,
                 skills_required: job.skills_required,
                 majors_accepted: job.majors_accepted,
@@ -482,6 +524,7 @@ pub async fn create_job(
     Extension(claims): Extension<Claims>,
     Json(data): Json<CreateJobRequest>,
 ) -> Result<Json<String>, StatusCode> {
+    let company_id = RecordId::from_str(&data.company_id).ok();
     let users: Vec<User> = db
         .query("SELECT * FROM User WHERE uid = $uid")
         .bind(("uid", claims.uid.clone()))
@@ -498,6 +541,9 @@ pub async fn create_job(
         id: None,
         employer_id,
         title: data.title,
+        company_id,
+        company_name: data.company_name,
+        min_experience: data.min_experience,
         description: data.description,
         skills_required: data.skills_required.unwrap_or_default(),
         majors_accepted: data.majors_accepted.unwrap_or_default(),
@@ -696,6 +742,9 @@ pub async fn get_my_jobs(
             employer_name: employer_name.clone(),
             employer_id: job.employer_id.to_string(),
             title: job.title,
+            company_name: job.company_name,
+            company_id: job.company_id.clone().map(|id| id.to_string()),
+            min_experience: job.min_experience,
             description: job.description,
             skills_required: job.skills_required,
             majors_accepted: job.majors_accepted,
@@ -900,23 +949,28 @@ pub async fn search_companies(
     Ok(Json(companies.into_iter().map(CompanyData::from).collect()))
 }
 
-async fn get_working_at(db: &Surreal<Db>, user_id: &RecordId) -> Option<UserCompanyData> {
+async fn get_working_at(db: &Surreal<Db>, user_id: &RecordId) -> Option<Vec<UserCompanyData>> {
     let mut res = db.query(
         "SELECT out AS company_id, out.name AS company_name, out.created_by AS creator_id, designation, is_verified FROM works_for WHERE in = $uid"
     ).bind(("uid", user_id.clone())).await.ok()?;
 
     let records: Vec<WorksForQueryResult> = res.take(0).ok()?;
-    if let Some(record) = records.into_iter().next() {
-        Some(UserCompanyData {
+    if records.is_empty() {
+        return None;
+    }
+
+    let companies = records
+        .into_iter()
+        .map(|record| UserCompanyData {
             company_id: record.company_id.to_string(),
             company_name: record.company_name,
             designation: record.designation,
             is_verified: record.is_verified,
             is_owner: record.creator_id == *user_id,
         })
-    } else {
-        None
-    }
+        .collect();
+
+    Some(companies)
 }
 
 pub async fn verify_employee(
@@ -1013,6 +1067,9 @@ pub async fn get_my_applications(
                 employer_name: name.unwrap_or_default(),
                 employer_id: job.employer_id.to_string(),
                 title: job.title,
+                company_name: job.company_name,
+                company_id: job.company_id.clone().map(|id| id.to_string()),
+                min_experience: job.min_experience,
                 description: job.description,
                 skills_required: job.skills_required,
                 majors_accepted: job.majors_accepted,
@@ -1042,8 +1099,6 @@ pub async fn get_single_job(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<JobsData>, StatusCode> {
     let job_rid = RecordId::from_str(&job_id).map_err(|_| StatusCode::BAD_REQUEST)?;
-    let user = get_user_from_uid(claims.uid, &db).await?;
-    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let job: Option<Job> = db
         .select(job_rid.clone())
@@ -1051,15 +1106,37 @@ pub async fn get_single_job(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let job = job.ok_or(StatusCode::NOT_FOUND)?;
 
-    if job.employer_id != user_id {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
+    // 1. Fetch the employer's name dynamically instead of assuming the current user is the employer
 
+    let mut result = db
+        .query("SELECT VALUE name FROM $eid")
+        .bind(("eid", job.employer_id.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let employer_name: Option<String> = result.take(0).unwrap_or_default();
+
+    // 2. Check if the current user has already applied to this job
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.unwrap();
+
+    let mut app_res = db
+        .query("SELECT * FROM application WHERE in = $uid AND out = $jid")
+        .bind(("uid", user_id))
+        .bind(("jid", job_rid))
+        .await
+        .unwrap();
+    let apps: Vec<Application> = app_res.take(0).unwrap_or_default();
+
+    // 3. Build the final job data to send to the frontend
     let job_data = JobsData {
         id: job.id.unwrap().to_string(),
-        employer_name: user.name,
+        employer_name: employer_name.unwrap_or_default(),
         employer_id: job.employer_id.to_string(),
         title: job.title,
+        company_name: job.company_name,
+        company_id: job.company_id.clone().map(|id| id.to_string()),
+        min_experience: job.min_experience,
         description: job.description,
         skills_required: job.skills_required,
         majors_accepted: job.majors_accepted,
@@ -1070,13 +1147,12 @@ pub async fn get_single_job(
         datetime_created: job.datetime_created,
         datetime_due: job.datetime_due,
         min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap(),
-        has_applied: None,
+        has_applied: Some(!apps.is_empty()), // True if an application exists, False otherwise
         photos: job.photos,
     };
 
     Ok(Json(job_data))
 }
-// Replace these 4 functions in src/server_functions.rs
 
 pub async fn update_job(
     State(db): State<Surreal<Db>>,
@@ -1098,10 +1174,13 @@ pub async fn update_job(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
+    // Convert the incoming string data into strict DB record pointers
+    let merge_data = MergeJobData::from(data);
+
     let res = db
         .query("UPDATE $rid MERGE $data")
         .bind(("rid", job_rid.clone()))
-        .bind(("data", data))
+        .bind(("data", merge_data)) // Pass the converted struct here
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

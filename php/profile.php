@@ -43,7 +43,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (isset($_POST["about_user"])) {
         $updateData["about_user"] = trim($_POST["about_user"]);
     }
-
     if (!empty($_POST["skills"])) {
         $updateData["skills"] = array_values(
             array_filter(json_decode($_POST["skills"], true)),
@@ -137,13 +136,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 
 $profileResult = callRustAPI("/profile", "GET", null, $token);
-
 if (!$profileResult["success"]) {
     clearJWTCookie();
     header("Location: signin.php");
     exit();
 }
-
 $profile = $profileResult["data"];
 
 if (isset($profile["current_work"]) && is_array($profile["current_work"])) {
@@ -265,25 +262,27 @@ if (
 
                 <?php if (!empty($profile["working_at"])): ?>
                     <div style="background: #f0fdf4; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
-                        <h4 style="margin: 0 0 5px; color: #155724;">🏢 Company Affiliation</h4>
-                        <div style="font-size: 14px; color: #155724; display: flex; align-items: center; flex-wrap: wrap;">
-                            <strong><?php echo htmlspecialchars(
-                                $profile["working_at"]["designation"],
-                            ); ?></strong>
-                            &nbsp;at&nbsp;
-                            <a href="company.php?id=<?php echo urlencode(
-                                $profile["working_at"]["company_id"],
-                            ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
-                                <?php echo htmlspecialchars(
-                                    $profile["working_at"]["company_name"],
-                                ); ?>
-                            </a>
-                            <?php if ($profile["working_at"]["is_verified"]): ?>
-                                <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: white;">✓ Verified</span>
-                            <?php else: ?>
-                                <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
-                            <?php endif; ?>
-                        </div>
+                        <h4 style="margin: 0 0 10px; color: #155724;">🏢 Company Affiliations</h4>
+                        <?php foreach ($profile["working_at"] as $comp): ?>
+                            <div style="font-size: 14px; color: #155724; display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                                <strong><?php echo htmlspecialchars(
+                                    $comp["designation"],
+                                ); ?></strong>
+                                &nbsp;at&nbsp;
+                                <a href="company.php?id=<?php echo urlencode(
+                                    $comp["company_id"],
+                                ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
+                                    <?php echo htmlspecialchars(
+                                        $comp["company_name"],
+                                    ); ?>
+                                </a>
+                                <?php if ($comp["is_verified"]): ?>
+                                    <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: white;">✓ Verified</span>
+                                <?php else: ?>
+                                    <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
 
@@ -437,51 +436,49 @@ if (
                     </div>
 
                     <?php if (!empty($profile["working_at"])): ?>
-                        <div class="posted-job-card" style="display: flex; gap: 20px; align-items: center;">
-                            <div style="width: 60px; height: 60px; border-radius: 8px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 24px;">🏢</div>
-                            <div style="flex: 1;">
-                                <h3 style="margin: 0 0 5px;">
-                                    <a href="company.php?id=<?php echo urlencode(
-                                        $profile["working_at"]["company_id"],
-                                    ); ?>" style="text-decoration: none; color: #333;">
-                                        <?php echo htmlspecialchars(
-                                            $profile["working_at"][
-                                                "company_name"
-                                            ],
+                        <?php foreach ($profile["working_at"] as $comp): ?>
+                            <div class="posted-job-card" style="display: flex; gap: 20px; align-items: center;">
+                                <div style="width: 60px; height: 60px; border-radius: 8px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 24px;">🏢</div>
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 5px;">
+                                        <a href="company.php?id=<?php echo urlencode(
+                                            $comp["company_id"],
+                                        ); ?>" style="text-decoration: none; color: #333;">
+                                            <?php echo htmlspecialchars(
+                                                $comp["company_name"],
+                                            ); ?>
+                                        </a>
+                                    </h3>
+                                    <div style="color: #666; font-size: 14px;">
+                                        <strong>Role:</strong> <?php echo htmlspecialchars(
+                                            $comp["designation"],
                                         ); ?>
-                                    </a>
-                                </h3>
-                                <div style="color: #666; font-size: 14px;">
-                                    <strong>Role:</strong> <?php echo htmlspecialchars(
-                                        $profile["working_at"]["designation"],
-                                    ); ?>
+                                        <?php if ($comp["is_verified"]): ?>
+                                            <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: #f0fdf4;">✓ Verified</span>
+                                        <?php else: ?>
+                                            <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                                    <a href="company.php?id=<?php echo urlencode(
+                                        $comp["company_id"],
+                                    ); ?>" class="btn btn-secondary">View Profile</a>
                                     <?php if (
-                                        $profile["working_at"]["is_verified"]
+                                        isset($comp["is_owner"]) &&
+                                        $comp["is_owner"]
                                     ): ?>
-                                        <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: #f0fdf4;">✓ Verified</span>
-                                    <?php else: ?>
-                                        <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                        <a href="edit_company.php?id=<?php echo urlencode(
+                                            $comp["company_id"],
+                                        ); ?>" class="btn btn-secondary" style="background:#17a2b8; text-decoration:none;">Edit</a>
+                                        <button onclick="deleteCompany('<?php echo htmlspecialchars(
+                                            $comp["company_id"],
+                                        ); ?>')" class="btn btn-secondary" style="background:#dc3545; border:none; cursor:pointer;">Delete</button>
                                     <?php endif; ?>
                                 </div>
                             </div>
-
-                            <div style="display:flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                                <a href="company.php?id=<?php echo urlencode(
-                                    $profile["working_at"]["company_id"],
-                                ); ?>" class="btn btn-secondary">View Profile</a>
-                                <?php if (
-                                    isset($profile["working_at"]["is_owner"]) &&
-                                    $profile["working_at"]["is_owner"]
-                                ): ?>
-                                    <a href="edit_company.php?id=<?php echo urlencode(
-                                        $profile["working_at"]["company_id"],
-                                    ); ?>" class="btn btn-secondary" style="background:#17a2b8; text-decoration:none;">Edit</a>
-                                    <button onclick="deleteCompany('<?php echo htmlspecialchars(
-                                        $profile["working_at"]["company_id"],
-                                    ); ?>')" class="btn btn-secondary" style="background:#dc3545; border:none; cursor:pointer;">Delete</button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <div class="empty-state" style="text-align: center; padding: 40px 20px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ddd;">
                             <div style="font-size: 40px; margin-bottom: 10px;">🏢</div>
@@ -509,14 +506,16 @@ if (
 
             <div id="edit-mode" class="edit-mode">
                 <div class="profile-section" style="background: #f8f9fa; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;">
-                    <h3>🏢 Company Affiliation</h3>
+                    <h3>🏢 Company Affiliations</h3>
                     <?php if (!empty($profile["working_at"])): ?>
-                        <p style="font-size: 14px; margin-bottom: 10px;">You are currently affiliated with <strong><?php echo htmlspecialchars(
-                            $profile["working_at"]["company_name"],
-                        ); ?></strong>.</p>
-                        <a href="company.php?id=<?php echo urlencode(
-                            $profile["working_at"]["company_id"],
-                        ); ?>" class="btn btn-secondary" style="display:inline-block; background:#6c757d; text-decoration:none;">View Company Page</a>
+                        <?php foreach ($profile["working_at"] as $comp): ?>
+                            <p style="font-size: 14px; margin-bottom: 5px;">You are affiliated with <strong><?php echo htmlspecialchars(
+                                $comp["company_name"],
+                            ); ?></strong>.</p>
+                            <a href="company.php?id=<?php echo urlencode(
+                                $comp["company_id"],
+                            ); ?>" class="btn btn-secondary" style="display:inline-block; background:#6c757d; text-decoration:none; padding:5px 10px; font-size:12px; margin-bottom:15px;">View Company Page</a><br>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <p style="color: #666; font-size: 14px; margin-bottom: 10px;">You are not currently linked to any company.</p>
                         <p style="font-size: 12px; color: #888;">If you are an employer, you can search and join your company, or create a new one from your dashboard.</p>
@@ -598,22 +597,16 @@ if (
                     <div class="profile-section">
                         <h3>🕰️ Previous Experience</h3>
                         <div id="previous-experience-container"></div>
-                        <button type="button" class="btn btn-add" id="add-experience-btn">
-                            ➕ Add Experience Record
-                        </button>
+                        <button type="button" class="btn btn-add" id="add-experience-btn">➕ Add Experience Record</button>
                     </div>
 
                     <div class="profile-section">
                         <h3>🎓 Education</h3>
                         <div id="education-container"></div>
-                        <button type="button" class="btn btn-add" id="add-education-btn">
-                            ➕ Add Education Record
-                        </button>
+                        <button type="button" class="btn btn-add" id="add-education-btn">➕ Add Education Record</button>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" id="save-btn">
-                        💾 Save Changes
-                    </button>
+                    <button type="submit" class="btn btn-primary" id="save-btn">💾 Save Changes</button>
                 </form>
             </div>
         </div>
@@ -684,6 +677,10 @@ if (
 
                     let html = '';
                     result.data.forEach(job => {
+                        const companyLink = job.company_id
+                            ? `<a href="company.php?id=${encodeURIComponent(job.company_id)}" style="color: #0c5460; font-weight: bold; text-decoration: underline;">${job.company_name}</a>`
+                            : (job.company_name || 'Your Company');
+
                         html += `
                             <div class="posted-job-card">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -694,7 +691,7 @@ if (
                                         <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
                                     </div>
                                 </div>
-                                <p style="color:#666; font-size:14px; margin-top:8px;">📍 ${job.location} | 💰 $${job.salary_range_start} - $${job.salary_range_end}</p>
+                                <p style="color:#666; font-size:14px; margin-top:8px;">🏢 ${companyLink} | 📍 ${job.location} | 💰 $${job.salary_range_start} - $${job.salary_range_end}</p>
                                 <div id="applicants-${job.id}" style="display:none; margin-top: 20px; border-top: 2px dashed #e0e0e0; padding-top: 20px;">
                                     <p>Loading applicants...</p>
                                 </div>
@@ -842,6 +839,10 @@ if (
                         const dateObj = new Date(app.datetime_applied);
                         const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
 
+                        const companyLink = app.job.company_id
+                            ? `<a href="company.php?id=${encodeURIComponent(app.job.company_id)}" style="color: #0c5460; font-weight: bold; text-decoration: underline;">${app.job.company_name}</a>`
+                            : (app.job.company_name || app.job.employer_name);
+
                         html += `
                             <div class="posted-job-card" style="border-left: 4px solid ${statusColor};">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -849,7 +850,7 @@ if (
                                     <span style="font-size:12px; font-weight:bold; background:${statusBg}; color:${statusColor}; padding:5px 12px; border-radius:15px;">${app.status.toUpperCase()}</span>
                                 </div>
                                 <div style="color:#666; font-size:14px; margin-top:8px;">
-                                    🏢 ${app.job.employer_name} | 📍 ${app.job.location}
+                                    🏢 ${companyLink} | 📍 ${app.job.location}
                                 </div>
                                 <div style="color:#888; font-size:12px; margin-top:10px;">
                                     Applied on: ${prettyDate}

@@ -49,28 +49,30 @@ if ($apiResult["success"]) {
         .jobs-section { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
         .jobs-section h2 { color: #333; margin-bottom: 20px; font-size: 24px; }
         .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .job-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s; background: #fafafa; }
-        .job-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
+
+        /* Updated Job Card Styles */
+        .job-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; background: #fafafa; cursor: pointer; }
+        .job-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); border-color: #667eea; }
         .job-card h3 { color: #667eea; margin-bottom: 10px; font-size: 20px; }
-        .job-card .employer { color: #666; font-size: 14px; margin-bottom: 10px; font-weight: 600; }
-        .job-card .description { color: #555; margin-bottom: 15px; line-height: 1.6; font-size: 14px; }
-        .job-card .details { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .job-card .detail-item { font-size: 13px; color: #666; }
-        .job-card .detail-item strong { color: #333; }
-        .job-card .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
-        .skill-tag { background: #667eea; color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; }
+        .job-card .employer { color: #666; font-size: 14px; margin-bottom: 15px; font-weight: 600; }
+        .job-card .details { display: flex; flex-direction: row; gap: 15px; flex-wrap: wrap; }
+        .job-card .detail-item { font-size: 13px; color: #666; background: white; padding: 5px 12px; border-radius: 15px; border: 1px solid #ddd; }
+
         .no-jobs { text-align: center; padding: 60px 20px; color: #666; }
         .no-jobs h3 { font-size: 22px; margin-bottom: 10px; }
         .salary { color: #28a745; font-weight: 600; }
         .location { color: #17a2b8; }
         .btn-create-job { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; text-decoration: none; transition: background 0.3s; display: inline-block; }
         .btn-create-job:hover { background: #218838; }
+
         .candidate-card { border: 1px solid #e0e0e0; border-left: 5px solid #667eea; border-radius: 8px; padding: 20px; background: #fff; transition: transform 0.2s; }
         .candidate-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); }
         .candidate-card h3 { color: #333; font-size: 1.2rem; margin-bottom: 5px; }
         .candidate-card .email { color: #666; font-size: 0.9rem; margin-bottom: 15px; display: block; }
         .section-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
         .badge-candidate { background: #e2e8f0; color: #4a5568; }
+        .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+        .skill-tag { background: #667eea; color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -113,42 +115,18 @@ if ($apiResult["success"]) {
                 <div class="jobs-grid">
                     <?php if ($dashboardMode === "jobs"): ?>
                         <?php foreach ($dashboardData as $job): ?>
-                            <div class="job-card">
+                            <div class="job-card" onclick="window.location.href='job_details.php?id=<?php echo urlencode(
+                                $job["id"],
+                            ); ?>'">
                                 <h3><?php echo htmlspecialchars(
                                     $job["title"],
                                 ); ?></h3>
                                 <div class="employer">
-                                    <?php
-                                    $empId = $job["employer_id"] ?? "";
-                                    $isUser = strpos($empId, "User:") === 0;
-                                    $profileLink = $isUser
-                                        ? "user_details.php"
-                                        : "company.php";
-                                    ?>
-                                    🏢 <a href="<?php echo $profileLink; ?>?id=<?php echo urlencode(
-    $empId,
-); ?>" style="text-decoration: none; color: #666; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#666'">
-                                        <?php echo htmlspecialchars(
-                                            $job["employer_name"],
-                                        ); ?>
-                                    </a>
+                                    🏢 <?php echo htmlspecialchars(
+                                        $job["company_name"] ?:
+                                        $job["employer_name"],
+                                    ); ?>
                                 </div>
-                                <div class="description"><?php echo htmlspecialchars(
-                                    $job["description"],
-                                ); ?></div>
-
-                                <?php if (!empty($job["photos"])): ?>
-                                    <div style="display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto;">
-                                        <?php foreach (
-                                            $job["photos"]
-                                            as $photo
-                                        ): ?>
-                                            <img src="<?php echo htmlspecialchars(
-                                                $photo,
-                                            ); ?>" style="width: 100px; height: 75px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd;">
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
 
                                 <div class="details">
                                     <?php if (!empty($job["location"])): ?>
@@ -163,29 +141,6 @@ if ($apiResult["success"]) {
                                             $job["salary_range_start"],
                                         ); ?>+</div>
                                     <?php endif; ?>
-                                </div>
-
-                                <?php if (!empty($job["skills_required"])): ?>
-                                    <div class="skills">
-                                        <?php foreach (
-                                            $job["skills_required"]
-                                            as $skill
-                                        ): ?>
-                                            <span class="skill-tag"><?php echo htmlspecialchars(
-                                                $skill,
-                                            ); ?></span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <div style="margin-top: 20px; text-align: right;">
-                                    <button class="btn-create-job" style="background:#667eea; width:100%; text-align:center; border:none;" onclick="applyForJob('<?php echo htmlspecialchars(
-                                        $job["id"],
-                                    ); ?>', '<?php echo htmlspecialchars(
-    $job["employer_id"],
-); ?>', this)">
-                                        Apply Now
-                                    </button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -222,36 +177,30 @@ if ($apiResult["success"]) {
                                     </div>
                                 </div>
 
-                                <?php if (!empty($candidate["working_at"])): ?>
-                                    <div style="margin-bottom: 15px; font-size: 0.9rem; border-left: 3px solid #28a745; padding-left: 10px;">
-                                        <strong style="color: #28a745;">🏢 Company Affiliation:</strong><br>
-                                        <span style="color: #333; font-weight: 600;">
-                                            <?php echo htmlspecialchars(
-                                                $candidate["working_at"][
-                                                    "designation"
-                                                ],
-                                            ); ?>
-                                        </span>
-                                        at
-                                        <a href="company.php?id=<?php echo urlencode(
-                                            $candidate["working_at"][
-                                                "company_id"
-                                            ],
-                                        ); ?>" style="color: #667eea; text-decoration: none; font-weight: bold;">
-                                            <?php echo htmlspecialchars(
-                                                $candidate["working_at"][
-                                                    "company_name"
-                                                ],
-                                            ); ?>
-                                        </a>
-                                        <?php if (
-                                            $candidate["working_at"][
-                                                "is_verified"
-                                            ]
-                                        ): ?>
-                                            <span style="color: #28a745; font-size: 10px; margin-left: 5px;">(✓ Verified)</span>
-                                        <?php endif; ?>
-                                    </div>
+                                <?php $workAt =
+                                    $candidate["working_at"] ?? []; ?>
+                                <?php if (!empty($workAt)): ?>
+                                    <?php foreach ($workAt as $comp): ?>
+                                        <div style="margin-bottom: 10px; font-size: 0.9rem; border-left: 3px solid #28a745; padding-left: 10px;">
+                                            <strong style="color: #28a745;">🏢 Affiliation:</strong><br>
+                                            <span style="color: #333; font-weight: 600;">
+                                                <?php echo htmlspecialchars(
+                                                    $comp["designation"],
+                                                ); ?>
+                                            </span>
+                                            at
+                                            <a href="company.php?id=<?php echo urlencode(
+                                                $comp["company_id"],
+                                            ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
+                                                <?php echo htmlspecialchars(
+                                                    $comp["company_name"],
+                                                ); ?>
+                                            </a>
+                                            <?php if ($comp["is_verified"]): ?>
+                                                <span style="color: #28a745; font-size: 10px; margin-left: 5px;">(✓ Verified)</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
                                 <?php elseif (
                                     !empty($candidate["current_work"])
                                 ): ?>
@@ -318,35 +267,5 @@ if ($apiResult["success"]) {
             <?php endif; ?>
         </div>
     </div>
-
-    <script>
-        async function applyForJob(jobId, employerId, btnElement) {
-            btnElement.disabled = true;
-            btnElement.textContent = 'Submitting Application...';
-
-            try {
-                const res = await fetch('apply.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ job_id: jobId, employer_id: employerId })
-                });
-                const data = await res.json();
-
-                if (data.status === 'success') {
-                    btnElement.textContent = 'Applied ✅';
-                    btnElement.style.background = '#28a745';
-                    btnElement.style.cursor = 'default';
-                } else {
-                    alert('Failed to apply: ' + data.message);
-                    btnElement.disabled = false;
-                    btnElement.textContent = 'Apply Now';
-                }
-            } catch (e) {
-                alert('Error applying. Please try again later.');
-                btnElement.disabled = false;
-                btnElement.textContent = 'Apply Now';
-            }
-        }
-    </script>
 </body>
 </html>

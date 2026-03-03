@@ -123,7 +123,7 @@ pub struct UserProfile {
     pub profile_picture: Option<String>,
     pub resume: Option<String>,
     pub about_user: Option<String>,
-    pub working_at: Option<UserCompanyData>,
+    pub working_at: Option<Vec<UserCompanyData>>,
 }
 
 #[derive(Serialize)]
@@ -202,6 +202,12 @@ pub struct JobsData {
     pub employer_name: String,
     pub employer_id: String,
     pub title: String,
+    #[serde(default)]
+    pub company_name: String,
+    #[serde(default)]
+    pub company_id: Option<String>,
+    #[serde(default)]
+    pub min_experience: Option<u16>,
     pub description: String,
     pub skills_required: Vec<String>,
     pub majors_accepted: Vec<String>,
@@ -219,6 +225,9 @@ pub struct JobsData {
 #[derive(Serialize, Deserialize)]
 pub struct CreateJobRequest {
     pub title: String,
+    pub company_name: String,
+    pub company_id: String,
+    pub min_experience: Option<u16>,
     pub description: String,
     pub skills_required: Option<Vec<String>>,
     pub majors_accepted: Option<Vec<String>>,
@@ -235,6 +244,12 @@ pub struct Job {
     pub id: Option<RecordId>,
     pub employer_id: RecordId,
     pub title: String,
+    #[serde(default)]
+    pub company_name: String,
+    #[serde(default)]
+    pub company_id: Option<RecordId>,
+    #[serde(default)]
+    pub min_experience: Option<u16>,
     pub description: String,
     pub skills_required: Vec<String>,
     pub majors_accepted: Vec<String>,
@@ -421,6 +436,12 @@ pub struct UpdateJobRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub company_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub company_id: Option<String>, // <--- Change this back to Option<String>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_experience: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skills_required: Option<Vec<String>>,
@@ -435,7 +456,37 @@ pub struct UpdateJobRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub datetime_due: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_ed_lvl: Option<u8>, // <-- Change this from Option<EduLevel> to Option<u8>
+    pub min_ed_lvl: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photos: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+pub struct MergeJobData {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub company_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub company_id: Option<RecordId>, // Native RecordId for DB merging
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_experience: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skills_required: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub majors_accepted: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub salary_range_start: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub salary_range_end: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub datetime_due: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_ed_lvl: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub photos: Option<Vec<String>>,
 }
@@ -462,4 +513,27 @@ pub struct MyApplicationData {
 #[derive(Deserialize)]
 pub struct SearchQuery {
     pub q: String,
+}
+
+impl From<UpdateJobRequest> for MergeJobData {
+    fn from(req: UpdateJobRequest) -> Self {
+        let company_id = req
+            .company_id
+            .and_then(|id_str| RecordId::from_str(&id_str).ok());
+        Self {
+            title: req.title,
+            company_name: req.company_name,
+            company_id,
+            min_experience: req.min_experience,
+            description: req.description,
+            skills_required: req.skills_required,
+            majors_accepted: req.majors_accepted,
+            location: req.location,
+            salary_range_start: req.salary_range_start,
+            salary_range_end: req.salary_range_end,
+            datetime_due: req.datetime_due,
+            min_ed_lvl: req.min_ed_lvl,
+            photos: req.photos,
+        }
+    }
 }
