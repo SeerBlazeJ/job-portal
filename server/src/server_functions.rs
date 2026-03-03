@@ -792,8 +792,14 @@ pub async fn get_job_applicants(
         if let Some(u) = users.into_iter().next() {
             applicants.push(ApplicantData {
                 user: UserProfile::from(u),
-                datetime_applied: app.datetime_applied,
-                status: app.status,
+                datetime_applied: app
+                    .datetime_applied
+                    .unwrap_or_else(|| "Unknown".to_string()), // <--- FIXED
+                status: if app.status.is_empty() {
+                    "Pending".to_string()
+                } else {
+                    app.status
+                }, // <--- FIXED
             });
         }
     }
@@ -1085,8 +1091,14 @@ pub async fn get_my_applications(
             };
             my_apps.push(MyApplicationData {
                 job: job_data,
-                status: app.status,
-                datetime_applied: app.datetime_applied,
+                status: if app.status.is_empty() {
+                    "Pending".to_string()
+                } else {
+                    app.status
+                }, // <--- FIXED
+                datetime_applied: app
+                    .datetime_applied
+                    .unwrap_or_else(|| "Unknown".to_string()), // <--- FIXED
             });
         }
     }
@@ -1209,7 +1221,7 @@ pub async fn delete_job(
 
     let res = db
         .query("DELETE application WHERE out = $rid; DELETE $rid;")
-        .bind(("rid", job_id.clone()))
+        .bind(("rid", job_rid.clone())) // <--- FIXED: Now correctly binds the RecordId, not the String
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

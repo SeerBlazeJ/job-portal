@@ -15,10 +15,9 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-research in earnings
 Implement search
-Implement Chat System
 Implement Filters
+Implement Chat System
 Implement Agentic features + AI based job finding
 */
 

@@ -269,8 +269,8 @@ pub struct Application {
     #[serde(rename = "in")]
     pub applicant: RecordId,
     pub out: RecordId,
-    pub employer_id: RecordId,
-    pub datetime_applied: String,
+    pub employer_id: Option<RecordId>,
+    pub datetime_applied: Option<String>,
     pub status: String,
 }
 
