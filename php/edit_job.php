@@ -122,129 +122,106 @@ $verifiedCompanies = array_filter($companies, function ($c) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Edit Job Post</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .btn-secondary { padding: 10px 20px; background: #6c757d; color: white; border-radius: 5px; text-decoration: none; font-weight: 600; display: inline-block; margin-bottom: 20px;}
-        .form-group { margin-bottom: 25px; }
-        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; }
-        .form-group textarea { min-height: 120px; resize: vertical; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .exp-inputs { display: flex; gap: 10px; }
-        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; }
-        .alert.show { display: block; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Edit Job Post — JobPortal</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h2>✏️ Edit Job: <?php echo htmlspecialchars($job["title"]); ?></h2>
-        <a href="profile.php" class="btn-secondary">← Back to Profile</a>
+    <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-        <div id="alert" class="alert"></div>
+    <div class="dash-container">
+        
+        <header class="dash-header">
+            <h1 class="dash-title">✏️ Edit Job Post</h1>
+            <div class="dash-nav">
+                <a href="profile.php" class="dash-btn dash-btn-glass">← Back to Profile</a>
+            </div>
+        </header>
 
-        <form id="job-form" enctype="multipart/form-data">
-            <input type="hidden" id="job_id" value="<?php echo htmlspecialchars(
-                $job["id"],
-            ); ?>">
+        <div class="profile-wrapper">
+            <h2 class="dash-section-title" style="margin-bottom: 2rem;">Updating: <?php echo htmlspecialchars($job["title"]); ?></h2>
+            <div id="alert" class="profile-alert"></div>
 
-            <div class="form-group"><label>Job Title *</label><input type="text" id="title" required value="<?php echo htmlspecialchars(
-                $job["title"],
-            ); ?>"></div>
+            <form id="job-form" enctype="multipart/form-data">
+                <input type="hidden" id="job_id" value="<?php echo htmlspecialchars($job["id"]); ?>">
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Company *</label>
-                    <?php if (empty($verifiedCompanies)): ?>
-                        <p style="color: #dc3545; font-size: 13px; font-weight: bold; margin-bottom: 5px;">⚠️ Verification Required.</p>
-                        <select id="company_select" disabled required><option value="">No verified companies</option></select>
-                    <?php else: ?>
-                        <select id="company_select" required>
-                            <option value="">-- Select Company --</option>
-                            <?php foreach ($verifiedCompanies as $comp): ?>
-                                <option value="<?php echo htmlspecialchars(
-                                    $comp["company_id"],
-                                ); ?>" data-name="<?php echo htmlspecialchars(
-    $comp["company_name"],
-); ?>" <?php echo ($job["company_id"] ?? "") === $comp["company_id"]
-    ? "selected"
-    : ""; ?>>
-                                    <?php echo htmlspecialchars(
-                                        $comp["company_name"],
-                                    ); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    <?php endif; ?>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Job Title *</label>
+                    <input type="text" id="title" class="form-input" style="padding-left: 1rem;" required value="<?php echo htmlspecialchars($job["title"]); ?>">
                 </div>
-                <div class="form-group">
-                    <label>Minimum Experience</label>
-                    <div class="exp-inputs">
-                        <input type="number" id="min_exp_years" placeholder="Years" min="0" value="<?php echo htmlspecialchars(
-                            $expYears,
-                        ); ?>">
-                        <input type="number" id="min_exp_months" placeholder="Months" min="0" max="11" value="<?php echo htmlspecialchars(
-                            $expMonths,
-                        ); ?>">
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Company *</label>
+                        <?php if (empty($verifiedCompanies)): ?>
+                            <div class="warning-box">⚠️ Verification Required.</div>
+                            <select id="company_select" class="form-input" style="padding-left: 1rem;" disabled required><option value="">No verified companies</option></select>
+                        <?php else: ?>
+                            <select id="company_select" class="form-input" style="padding-left: 1rem;" required>
+                                <option value="">-- Select Company --</option>
+                                <?php foreach ($verifiedCompanies as $comp): ?>
+                                    <option value="<?php echo htmlspecialchars($comp["company_id"]); ?>" data-name="<?php echo htmlspecialchars($comp["company_name"]); ?>" <?php echo ($job["company_id"] ?? "") === $comp["company_id"] ? "selected" : ""; ?>>
+                                        <?php echo htmlspecialchars($comp["company_name"]); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Minimum Experience</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="number" id="min_exp_years" class="form-input" style="padding-left: 1rem; flex: 1;" placeholder="Years" min="0" value="<?php echo htmlspecialchars($expYears); ?>">
+                            <input type="number" id="min_exp_months" class="form-input" style="padding-left: 1rem; flex: 1;" placeholder="Months" min="0" max="11" value="<?php echo htmlspecialchars($expMonths); ?>">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group"><label>Job Description *</label><textarea id="description" required><?php echo htmlspecialchars(
-                $job["description"],
-            ); ?></textarea></div>
-
-            <div class="form-row">
-                <div class="form-group"><label>Location *</label><input type="text" id="location" required value="<?php echo htmlspecialchars(
-                    $job["location"],
-                ); ?>"></div>
-                <div class="form-group">
-                    <label>Minimum Education Level *</label>
-                    <?php $currentLvl = is_numeric($job["min_ed_lvl"])
-                        ? $job["min_ed_lvl"]
-                        : 3; ?>
-                    <select id="min_ed_lvl" required>
-                        <option value="1" <?php echo $currentLvl == 1
-                            ? "selected"
-                            : ""; ?>>High School</option>
-                        <option value="2" <?php echo $currentLvl == 2
-                            ? "selected"
-                            : ""; ?>>Diploma</option>
-                        <option value="3" <?php echo $currentLvl == 3
-                            ? "selected"
-                            : ""; ?>>Bachelor's Degree</option>
-                        <option value="4" <?php echo $currentLvl == 4
-                            ? "selected"
-                            : ""; ?>>Master's Degree</option>
-                        <option value="5" <?php echo $currentLvl == 5
-                            ? "selected"
-                            : ""; ?>>PhD/Doctorate</option>
-                    </select>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Job Description *</label>
+                    <textarea id="description" class="form-input" required><?php echo htmlspecialchars($job["description"]); ?></textarea>
                 </div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group"><label>Salary Range Start ($)</label><input type="number" id="salary_start" value="<?php echo htmlspecialchars(
-                    $job["salary_range_start"] ?? "",
-                ); ?>"></div>
-                <div class="form-group"><label>Salary Range End ($)</label><input type="number" id="salary_end" value="<?php echo htmlspecialchars(
-                    $job["salary_range_end"] ?? "",
-                ); ?>"></div>
-            </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Location *</label>
+                        <input type="text" id="location" class="form-input" style="padding-left: 1rem;" required value="<?php echo htmlspecialchars($job["location"]); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Minimum Education Level *</label>
+                        <?php $currentLvl = is_numeric($job["min_ed_lvl"]) ? $job["min_ed_lvl"] : 3; ?>
+                        <select id="min_ed_lvl" class="form-input" style="padding-left: 1rem;" required>
+                            <option value="1" <?php echo $currentLvl == 1 ? "selected" : ""; ?>>High School</option>
+                            <option value="2" <?php echo $currentLvl == 2 ? "selected" : ""; ?>>Diploma</option>
+                            <option value="3" <?php echo $currentLvl == 3 ? "selected" : ""; ?>>Bachelor's Degree</option>
+                            <option value="4" <?php echo $currentLvl == 4 ? "selected" : ""; ?>>Master's Degree</option>
+                            <option value="5" <?php echo $currentLvl == 5 ? "selected" : ""; ?>>PhD/Doctorate</option>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group"><label>Add Additional Photos</label><input type="file" id="photos" name="photos[]" accept="image/*" multiple></div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Salary Range Start ($)</label>
+                        <input type="number" id="salary_start" class="form-input" style="padding-left: 1rem;" value="<?php echo htmlspecialchars($job["salary_range_start"] ?? ""); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Salary Range End ($)</label>
+                        <input type="number" id="salary_end" class="form-input" style="padding-left: 1rem;" value="<?php echo htmlspecialchars($job["salary_range_end"] ?? ""); ?>">
+                    </div>
+                </div>
 
-            <button type="submit" class="btn-primary" id="submit-btn" <?php echo empty(
-                $verifiedCompanies
-            )
-                ? "disabled"
-                : ""; ?>>Save Changes</button>
-        </form>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label class="form-label">Add Additional Photos</label>
+                    <input type="file" id="photos" name="photos[]" accept="image/*" multiple class="form-input">
+                </div>
+
+                <button type="submit" class="dash-btn dash-btn-primary" id="submit-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;" <?php echo empty($verifiedCompanies) ? "disabled" : ""; ?>>
+                    💾 Save Changes
+                </button>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -279,25 +256,25 @@ $verifiedCompanies = array_filter($companies, function ($c) {
             const photosInput = document.getElementById('photos');
             for(let i = 0; i < photosInput.files.length; i++) { fd.append('photos[]', photosInput.files[i]); }
 
-            btn.disabled = true; btn.textContent = 'Saving...';
-            alertBox.className = 'alert';
+            btn.disabled = true; btn.innerHTML = '⏳ Saving...';
+            alertBox.classList.remove('show');
 
             try {
                 const res = await fetch('edit_job.php', { method: 'POST', body: fd });
                 const result = await res.json();
 
-                alertBox.textContent = result.message;
-                alertBox.className = `alert alert-${result.status === 'success' ? 'success' : 'error'} show`;
+                alertBox.innerHTML = `<span>${result.status === 'success' ? '✓' : '⚠️'}</span> ${result.message}`;
+                alertBox.className = `profile-alert alert-${result.status === 'success' ? 'success' : 'error'} show`;
 
                 if (result.status === 'success') {
                     setTimeout(() => window.location.href = 'profile.php', 1000);
                 } else {
-                    btn.disabled = false; btn.textContent = 'Save Changes';
+                    btn.disabled = false; btn.innerHTML = '💾 Save Changes';
                 }
             } catch(e) {
-                alertBox.textContent = 'Network Error';
-                alertBox.className = 'alert alert-error show';
-                btn.disabled = false; btn.textContent = 'Save Changes';
+                alertBox.innerHTML = `<span>⚠️</span> Network Error`;
+                alertBox.className = 'profile-alert alert-error show';
+                btn.disabled = false; btn.innerHTML = '💾 Save Changes';
             }
         });
     </script>

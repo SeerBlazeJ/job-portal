@@ -35,70 +35,49 @@ if ($apiResult["success"]) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Portal - Dashboard</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px;}
-        .header h1 { color: #333; font-size: 28px; }
-        .header .user-info { display: flex; align-items: center; gap: 15px; flex-wrap: wrap;}
-        .header .username { color: #667eea; font-weight: 600; }
-        .logout-btn { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.3s; }
-        .logout-btn:hover { background: #c82333; }
-        .jobs-section { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .jobs-section h2 { color: #333; margin-bottom: 20px; font-size: 24px; }
-        .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-
-        /* Updated Job Card Styles */
-        .job-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; background: #fafafa; cursor: pointer; }
-        .job-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); border-color: #667eea; }
-        .job-card h3 { color: #667eea; margin-bottom: 10px; font-size: 20px; }
-        .job-card .employer { color: #666; font-size: 14px; margin-bottom: 15px; font-weight: 600; }
-        .job-card .details { display: flex; flex-direction: row; gap: 15px; flex-wrap: wrap; }
-        .job-card .detail-item { font-size: 13px; color: #666; background: white; padding: 5px 12px; border-radius: 15px; border: 1px solid #ddd; }
-
-        .no-jobs { text-align: center; padding: 60px 20px; color: #666; }
-        .no-jobs h3 { font-size: 22px; margin-bottom: 10px; }
-        .salary { color: #28a745; font-weight: 600; }
-        .location { color: #17a2b8; }
-        .btn-create-job { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; text-decoration: none; transition: background 0.3s; display: inline-block; }
-        .btn-create-job:hover { background: #218838; }
-
-        .candidate-card { border: 1px solid #e0e0e0; border-left: 5px solid #667eea; border-radius: 8px; padding: 20px; background: #fff; transition: transform 0.2s; }
-        .candidate-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); }
-        .candidate-card h3 { color: #333; font-size: 1.2rem; margin-bottom: 5px; }
-        .candidate-card .email { color: #666; font-size: 0.9rem; margin-bottom: 15px; display: block; }
-        .section-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
-        .badge-candidate { background: #e2e8f0; color: #4a5568; }
-        .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
-        .skill-tag { background: #667eea; color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; }
-    </style>
+    <title>JobPortal — Dashboard</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎯 Job Portal Dashboard</h1>
-            <div class="user-info">
-                <span class="username">Welcome, <?php echo htmlspecialchars(
-                    $userName,
-                ); ?>!</span>
-                <a href="profile.php" class="btn-create-job">👤 Profile</a>
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dash-container">
+        
+        <header class="dash-header">
+            <h1 class="dash-title">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style="color:var(--indigo-400);filter:drop-shadow(0 0 10px rgba(99,102,241,0.6));">
+                    <path d="M16 4L4 10V22L16 28L28 22V10L16 4Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 16L4 10M16 16V28M16 16L28 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                JobPortal
+            </h1>
+            
+            <div class="dash-nav">
+                <span class="dash-welcome">Welcome, <strong><?php echo htmlspecialchars($userName); ?></strong></span>
+                
+                <a href="profile.php" class="dash-btn dash-btn-glass">👤 Profile</a>
 
                 <?php if (!$userProfile["is_finding_job"]): ?>
-                    <a href="create_job.php" class="btn-create-job">+ Create Job</a>
+                    <a href="create_job.php" class="dash-btn dash-btn-primary">+ Create Job</a>
                 <?php endif; ?>
 
                 <form action="logout.php" method="POST" style="margin: 0;">
-                    <button type="submit" class="logout-btn">Logout</button>
+                    <button type="submit" class="dash-btn dash-btn-danger">Logout</button>
                 </form>
             </div>
-        </div>
+        </header>
 
-        <div class="jobs-section">
-            <h2>
+        <main>
+            <h2 class="dash-section-title">
                 <?php if ($dashboardMode === "jobs"): ?>
-                    📋 Recommended Jobs For You
+                    ✨ Recommended For You
                 <?php elseif ($dashboardMode === "candidates"): ?>
                     👥 Available Candidates
                 <?php else: ?>
@@ -107,39 +86,28 @@ if ($apiResult["success"]) {
             </h2>
 
             <?php if (empty($dashboardData)): ?>
-                <div class="no-jobs">
-                    <h3>No data found</h3>
-                    <p>Check back later!</p>
+                <div class="dash-empty">
+                    <h3>No matches found yet</h3>
+                    <p>We're looking for the best fit. Check back later!</p>
                 </div>
             <?php else: ?>
-                <div class="jobs-grid">
+                <div class="dash-grid">
+                    
                     <?php if ($dashboardMode === "jobs"): ?>
                         <?php foreach ($dashboardData as $job): ?>
-                            <div class="job-card" onclick="window.location.href='job_details.php?id=<?php echo urlencode(
-                                $job["id"],
-                            ); ?>'">
-                                <h3><?php echo htmlspecialchars(
-                                    $job["title"],
-                                ); ?></h3>
-                                <div class="employer">
-                                    🏢 <?php echo htmlspecialchars(
-                                        $job["company_name"] ?:
-                                        $job["employer_name"],
-                                    ); ?>
+                            <div class="dash-card dash-card-job" onclick="window.location.href='job_details.php?id=<?php echo urlencode($job["id"]); ?>'">
+                                <h3 class="card-title"><?php echo htmlspecialchars($job["title"]); ?></h3>
+                                <div class="card-subtitle">
+                                    🏢 <?php echo htmlspecialchars($job["company_name"] ?: $job["employer_name"]); ?>
                                 </div>
 
-                                <div class="details">
+                                <div class="card-tags">
                                     <?php if (!empty($job["location"])): ?>
-                                        <div class="detail-item location">📍 <?php echo htmlspecialchars(
-                                            $job["location"],
-                                        ); ?></div>
+                                        <span class="dash-badge badge-location">📍 <?php echo htmlspecialchars($job["location"]); ?></span>
                                     <?php endif; ?>
-                                    <?php if (
-                                        isset($job["salary_range_start"])
-                                    ): ?>
-                                        <div class="detail-item salary">💰 $<?php echo number_format(
-                                            $job["salary_range_start"],
-                                        ); ?>+</div>
+                                    
+                                    <?php if (isset($job["salary_range_start"])): ?>
+                                        <span class="dash-badge badge-salary">💰 $<?php echo number_format($job["salary_range_start"]); ?>+</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -147,125 +115,80 @@ if ($apiResult["success"]) {
 
                     <?php elseif ($dashboardMode === "candidates"): ?>
                         <?php foreach ($dashboardData as $candidate): ?>
-                            <div class="candidate-card">
-                                <span class="section-badge badge-candidate">Job Seeker</span>
+                            <div class="dash-card">
+                                <span class="dash-badge badge-role">Job Seeker</span>
 
-                                <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items:center;">
-                                    <?php if (
-                                        !empty($candidate["profile_picture"])
-                                    ): ?>
-                                        <img src="<?php echo htmlspecialchars(
-                                            $candidate["profile_picture"],
-                                        ); ?>" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
+                                <div class="candidate-header">
+                                    <?php if (!empty($candidate["profile_picture"])): ?>
+                                        <img src="<?php echo htmlspecialchars($candidate["profile_picture"]); ?>" class="candidate-avatar" alt="Avatar">
                                     <?php else: ?>
-                                        <div style="width: 60px; height: 60px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 25px;">👤</div>
+                                        <div class="candidate-avatar">👤</div>
                                     <?php endif; ?>
 
                                     <div>
-                                        <h3 style="margin-bottom:0;">
-                                            <a href="user_details.php?id=<?php echo urlencode(
-                                                $candidate["id"],
-                                            ); ?>" style="text-decoration: none; color: #333;">
-                                                <?php echo htmlspecialchars(
-                                                    $candidate["name"],
-                                                ); ?>
+                                        <h3 class="card-title">
+                                            <a href="user_details.php?id=<?php echo urlencode($candidate["id"]); ?>">
+                                                <?php echo htmlspecialchars($candidate["name"]); ?>
                                             </a>
                                         </h3>
-                                        <span class="email" style="margin-bottom:0;">📧 <?php echo htmlspecialchars(
-                                            $candidate["email"],
-                                        ); ?></span>
+                                        <span class="candidate-email">📧 <?php echo htmlspecialchars($candidate["email"]); ?></span>
                                     </div>
                                 </div>
 
-                                <?php $workAt =
-                                    $candidate["working_at"] ?? []; ?>
+                                <?php $workAt = $candidate["working_at"] ?? []; ?>
                                 <?php if (!empty($workAt)): ?>
                                     <?php foreach ($workAt as $comp): ?>
-                                        <div style="margin-bottom: 10px; font-size: 0.9rem; border-left: 3px solid #28a745; padding-left: 10px;">
-                                            <strong style="color: #28a745;">🏢 Affiliation:</strong><br>
-                                            <span style="color: #333; font-weight: 600;">
-                                                <?php echo htmlspecialchars(
-                                                    $comp["designation"],
-                                                ); ?>
+                                        <div class="candidate-block" style="border-left-color: var(--emerald-400);">
+                                            <span class="candidate-block-title">🏢 Affiliation</span>
+                                            <span class="candidate-block-value">
+                                                <strong><?php echo htmlspecialchars($comp["designation"]); ?></strong> at 
+                                                <a href="company.php?id=<?php echo urlencode($comp["company_id"]); ?>"><?php echo htmlspecialchars($comp["company_name"]); ?></a>
+                                                <?php if ($comp["is_verified"]): ?>
+                                                    <span class="candidate-verified">✓ Verified</span>
+                                                <?php endif; ?>
                                             </span>
-                                            at
-                                            <a href="company.php?id=<?php echo urlencode(
-                                                $comp["company_id"],
-                                            ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
-                                                <?php echo htmlspecialchars(
-                                                    $comp["company_name"],
-                                                ); ?>
-                                            </a>
-                                            <?php if ($comp["is_verified"]): ?>
-                                                <span style="color: #28a745; font-size: 10px; margin-left: 5px;">(✓ Verified)</span>
-                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
-                                <?php elseif (
-                                    !empty($candidate["current_work"])
-                                ): ?>
-                                    <div style="margin-bottom: 15px; font-size: 0.9rem;">
-                                        <strong style="color: #4a5568;">💼 Current Role:</strong><br>
-                                        <span style="color: #666;">
-                                            <?php echo htmlspecialchars(
-                                                $candidate["current_work"][
-                                                    "worked_as"
-                                                ],
-                                            ); ?>
-                                            at <?php echo htmlspecialchars(
-                                                $candidate["current_work"][
-                                                    "company"
-                                                ],
-                                            ); ?>
+                                <?php elseif (!empty($candidate["current_work"])): ?>
+                                    <div class="candidate-block">
+                                        <span class="candidate-block-title">💼 Current Role</span>
+                                        <span class="candidate-block-value">
+                                            <?php echo htmlspecialchars($candidate["current_work"]["worked_as"]); ?> at 
+                                            <strong><?php echo htmlspecialchars($candidate["current_work"]["company"]); ?></strong>
                                         </span>
                                     </div>
                                 <?php endif; ?>
 
                                 <?php if (!empty($candidate["about_user"])): ?>
-                                    <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-style: italic;">
-                                        "<?php echo htmlspecialchars(
-                                            $candidate["about_user"],
-                                        ); ?>"
-                                    </p>
-                                <?php endif; ?>
-
-                                <?php if (!empty($candidate["education"])): ?>
-                                    <div class="details">
-                                        <div class="detail-item">
-                                            <strong>🎓 Education:</strong>
-                                            <?php echo count(
-                                                $candidate["education"],
-                                            ) . " qualifications listed"; ?>
-                                        </div>
-                                    </div>
+                                    <p class="candidate-about">"<?php echo htmlspecialchars($candidate["about_user"]); ?>"</p>
                                 <?php endif; ?>
 
                                 <?php if (!empty($candidate["skills"])): ?>
-                                    <div class="skills">
-                                        <?php foreach (
-                                            $candidate["skills"]
-                                            as $skill
-                                        ): ?>
-                                            <span class="skill-tag" style="background: #764ba2;"><?php echo htmlspecialchars(
-                                                $skill,
-                                            ); ?></span>
+                                    <div class="card-tags">
+                                        <?php foreach ($candidate["skills"] as $skill): ?>
+                                            <span class="dash-badge badge-skill"><?php echo htmlspecialchars($skill); ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php else: ?>
-                                    <p style="font-size:12px; color:#888; margin-top:10px;">No specific skills listed.</p>
+                                    <p class="candidate-about" style="margin-bottom:0; font-style:normal;">No skills listed.</p>
                                 <?php endif; ?>
 
-                                <div style="margin-top: 15px;">
-                                    <a href="mailto:<?php echo htmlspecialchars(
-                                        $candidate["email"],
-                                    ); ?>" class="btn-create-job" style="font-size: 12px; padding: 5px 10px;">Contact</a>
+                                <div class="candidate-footer">
+                                    <span class="candidate-edu">
+                                        <?php if (!empty($candidate["education"])): ?>
+                                            🎓 <?php echo count($candidate["education"]) . " qualifications"; ?>
+                                        <?php endif; ?>
+                                    </span>
+                                    <a href="mailto:<?php echo htmlspecialchars($candidate["email"]); ?>" class="dash-btn dash-btn-primary" style="padding: 0.4rem 1rem;">Contact</a>
                                 </div>
+
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
+
                 </div>
             <?php endif; ?>
-        </div>
+        </main>
     </div>
 </body>
 </html>

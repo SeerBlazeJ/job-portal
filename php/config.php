@@ -1,6 +1,9 @@
 <?php
 // config.php
-session_start();
+ob_start(); // Prevent session_start() issues with early output
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Rust server configuration
 define('RUST_API_URL', 'http://localhost:3000');
@@ -26,28 +29,70 @@ function jwtCookieOptions(int $expires): array {
 function callRustAPI($endpoint, $method = 'GET', $data = null, $token = null) {
     $url = RUST_API_URL . $endpoint;
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-
-    $headers = ['Content-Type: application/json'];
+    $headers = [
+        'Content-Type' => 'application/json',
+    ];
     if ($token) {
-        $headers[] = 'Authorization: Bearer ' . $token;
+        $headers['Authorization'] = 'Bearer ' . $token;
     }
 
+    $postData = null;
     if ($data !== null && ($method === 'POST' || $method === 'PUT')) {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $postData = json_encode($data);
     }
 
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    // Build header string for stream context
+    $headerStr = '';
+    foreach ($headers as $k => $v) {
+        $headerStr .= "$k: $v\r\n";
+    }
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
+    $contextOptions = [
+        'http' => [
+            'method' => $method,
+            'header' => $headerStr,
+            'timeout' => 10,
+        ]
+    ];
 
-    if ($error) {
+    if ($postData !== null) {
+        $contextOptions['http']['content'] = $postData;
+    }
+
+    $context = stream_context_create($contextOptions);
+
+    try {
+        $response = @file_get_contents($url, false, $context);
+        
+        // Assume 200 if response is received, otherwise it failed
+        $httpCode = ($response !== false) ? 200 : 500;
+
+        if ($response === false) {
+            return [
+                'success' => false,
+                'status' => 500,
+                'message' => 'Server connection failed',
+                'data' => null,
+                'raw' => null,
+            ];
+        }
+
+        $responseData = json_decode($response, true);
+
+        // Prefer backend-provided message if present
+        $msg = getMessageFromStatus($httpCode);
+        if (is_array($responseData) && isset($responseData['message']) && is_string($responseData['message'])) {
+            $msg = $responseData['message'];
+        }
+
+        return [
+            'success' => $httpCode >= 200 && $httpCode < 300,
+            'status' => $httpCode,
+            'message' => $msg,
+            'data' => $responseData,
+            'raw' => $response,
+        ];
+    } catch (Exception $e) {
         return [
             'success' => false,
             'status' => 500,
@@ -56,22 +101,6 @@ function callRustAPI($endpoint, $method = 'GET', $data = null, $token = null) {
             'raw' => null,
         ];
     }
-
-    $responseData = json_decode($response, true);
-
-    // Prefer backend-provided message if present
-    $msg = getMessageFromStatus($httpCode);
-    if (is_array($responseData) && isset($responseData['message']) && is_string($responseData['message'])) {
-        $msg = $responseData['message'];
-    }
-
-    return [
-        'success' => $httpCode >= 200 && $httpCode < 300,
-        'status' => $httpCode,
-        'message' => $msg,
-        'data' => $responseData,
-        'raw' => $response,
-    ];
 }
 
 function getMessageFromStatus($httpCode) {

@@ -72,84 +72,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Company - Job Portal</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-
-        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .header h1 { color: #333; font-size: 28px; }
-        .btn-secondary { padding: 10px 20px; background: #6c757d; color: white; border-radius: 5px; text-decoration: none; font-weight: 600; transition: background 0.3s;}
-        .btn-secondary:hover { background: #5a6268; }
-
-        .form-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .form-container h2 { margin-bottom: 25px; color: #333; }
-
-        .form-group { margin-bottom: 25px; }
-        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; font-family: inherit; transition: border-color 0.3s;}
-        .form-group input:focus, .form-group textarea:focus { border-color: #667eea; outline: none; }
-        .form-group textarea { min-height: 120px; resize: vertical; }
-
-        .row { display: flex; gap: 20px; }
-        .row > div { flex: 1; }
-
-        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.3s;}
-        .btn-primary:hover { background: #5568d3; }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-
-        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; font-weight: 500;}
-        .alert.show { display: block; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
+    <title>Create Company — JobPortal</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏢 Create Company</h1>
-            <a href="dashboard.php" class="btn-secondary">← Back to Dashboard</a>
-        </div>
+    <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-        <div class="form-container">
-            <h2>Register a New Company Profile</h2>
-            <div id="alert" class="alert"></div>
+    <div class="dash-container">
+        <header class="dash-header">
+            <h1 class="dash-title">🏢 Create Company</h1>
+            <div class="dash-nav">
+                <a href="dashboard.php" class="dash-btn dash-btn-glass">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <div class="profile-wrapper">
+            <h2 class="dash-section-title" style="margin-bottom: 2rem;">Register a New Company Profile</h2>
+            <div id="alert" class="profile-alert"></div>
 
             <form id="company-form" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="logo">Company Logo (Image)</label>
-                    <input type="file" id="logo" name="logo" accept="image/*">
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="logo">Company Logo (Image)</label>
+                    <input type="file" id="logo" name="logo" accept="image/*" class="form-input">
                 </div>
 
-                <div class="row">
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label for="name">Company Name *</label>
-                        <input type="text" id="name" name="name" required placeholder="e.g., Acme Corp">
+                        <label class="form-label" for="name">Company Name *</label>
+                        <input type="text" id="name" name="name" required placeholder="e.g., Acme Corp" class="form-input" style="padding-left: 1rem;">
                     </div>
                     <div class="form-group">
-                        <label for="designation">Your Role/Designation *</label>
-                        <input type="text" id="designation" name="designation" required placeholder="e.g., Founder & CEO">
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="form-group">
-                        <label for="location">Headquarters / Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., San Francisco, CA">
-                    </div>
-                    <div class="form-group">
-                        <label for="website">Website URL</label>
-                        <input type="url" id="website" name="website" placeholder="e.g., https://acmecorp.com">
+                        <label class="form-label" for="designation">Your Role/Designation *</label>
+                        <input type="text" id="designation" name="designation" required placeholder="e.g., Founder & CEO" class="form-input" style="padding-left: 1rem;">
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="description">About the Company</label>
-                    <textarea id="description" name="description" placeholder="What does your company do?"></textarea>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="location">Headquarters / Location</label>
+                        <input type="text" id="location" name="location" placeholder="e.g., San Francisco, CA" class="form-input" style="padding-left: 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="website">Website URL</label>
+                        <input type="url" id="website" name="website" placeholder="e.g., https://acmecorp.com" class="form-input" style="padding-left: 1rem;">
+                    </div>
                 </div>
 
-                <button type="submit" class="btn-primary" id="submit-btn">Register Company</button>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label class="form-label" for="description">About the Company</label>
+                    <textarea id="description" name="description" placeholder="What does your company do?" class="form-input"></textarea>
+                </div>
+
+                <button type="submit" class="dash-btn dash-btn-primary" id="submit-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;">🚀 Register Company</button>
             </form>
         </div>
     </div>
@@ -172,8 +150,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (logoFile) fd.append('logo', logoFile);
 
             btn.disabled = true;
-            btn.textContent = 'Registering...';
-            alertBox.className = 'alert'; // hide previous alerts
+            btn.innerHTML = '⏳ Registering...';
+            alertBox.classList.remove('show'); // hide previous alerts
 
             try {
                 const res = await fetch('create_company.php', {
@@ -183,21 +161,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 const result = await res.json();
 
-                alertBox.textContent = result.message;
-                alertBox.className = `alert alert-${result.status === 'success' ? 'success' : 'error'} show`;
+                alertBox.innerHTML = `<span>${result.status === 'success' ? '✓' : '⚠️'}</span> ${result.message}`;
+                alertBox.className = `profile-alert alert-${result.status === 'success' ? 'success' : 'error'} show`;
 
                 if (result.status === 'success') {
-                    // Redirect to dashboard after successful creation
                     setTimeout(() => window.location.href = 'dashboard.php', 1500);
                 } else {
                     btn.disabled = false;
-                    btn.textContent = 'Register Company';
+                    btn.innerHTML = '🚀 Register Company';
                 }
             } catch(error) {
-                alertBox.textContent = 'A network error occurred while submitting the form.';
-                alertBox.className = `alert alert-error show`;
+                alertBox.innerHTML = `<span>⚠️</span> A network error occurred while submitting the form.`;
+                alertBox.className = `profile-alert alert-error show`;
                 btn.disabled = false;
-                btn.textContent = 'Register Company';
+                btn.innerHTML = '🚀 Register Company';
             }
         });
     </script>

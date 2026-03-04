@@ -165,164 +165,105 @@ if (
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile - Job Portal</title>
+    <title>My Profile — JobPortal</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .header h1 { color: #333; font-size: 28px; }
-        .header .nav-links { display: flex; gap: 15px; align-items: center; }
-        .btn { padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.3s; display: inline-block; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .profile-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .profile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
-        .btn-edit { background: #667eea; color: white; }
-        .btn-cancel { background: #6c757d; color: white; }
-        .profile-section { margin-bottom: 30px; }
-        .profile-section h3 { color: #667eea; font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 15px; align-items: start; }
-        .info-label { font-weight: 600; color: #555; }
-        .info-value { color: #333; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; font-family: inherit; }
-        .form-group textarea { min-height: 100px; resize: vertical; }
-        .toggle-switch-container { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
-        .switch { position: relative; display: inline-block; width: 60px; height: 30px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #667eea; }
-        input:checked + .slider:before { transform: translateX(30px); }
-        .toggle-label { font-size: 14px; color: #999; font-weight: 600; cursor: pointer; }
-        .toggle-label.active { color: #333; }
-        .skills-container { display: flex; flex-wrap: wrap; gap: 8px; }
-        .skill-tag { background: #667eea; color: white; padding: 8px 15px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-        .skill-tag-remove { cursor: pointer; font-weight: bold; font-size: 18px; }
-        .tags-display { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; padding: 10px; border: 2px dashed #e0e0e0; border-radius: 5px; }
-        .education-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea; }
-        .education-form-item { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0; position: relative; }
-        .education-form-item .remove-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .btn-add { background: #28a745; color: white; padding: 10px 20px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer;}
-        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; }
-        .alert.show { display: block; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
-        .edit-mode { display: none; }
-        .view-mode { display: block; }
-        .helper-text { font-size: 12px; color: #666; margin-top: 5px; }
-        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-        .status-active { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-poster { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .empty-state { color: #999; font-style: italic; }
-        .edu-level-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #667eea; color: white; }
-        .profile-tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; overflow-x: auto; }
-        .profile-tab { padding: 12px 25px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; white-space: nowrap; }
-        .profile-tab:hover { color: #667eea; }
-        .profile-tab.active { color: #667eea; border-bottom-color: #667eea; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .posted-job-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
-        .applicant-card { background: white; border: 1px solid #ddd; border-left: 4px solid #667eea; border-radius: 6px; padding: 15px; margin-top: 10px; }
+       
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>👤 My Profile</h1>
-            <div class="nav-links">
-                <a href="dashboard.php" class="btn btn-secondary">← Back to Dashboard</a>
-            </div>
-        </div>
 
-        <div class="profile-container">
-            <div class="profile-header">
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dash-container profile-page-container">
+        
+        <header class="dash-header">
+            <h1 class="dash-title">👤 My Profile</h1>
+            <div class="dash-nav">
+                <a href="dashboard.php" class="dash-btn dash-btn-glass">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <div class="profile-wrapper">
+            
+            <div class="profile-top-bar">
                 <h2>Manage Account</h2>
-                <div class="nav-links">
-                    <button id="edit-btn" class="btn btn-edit view-mode">✏️ Edit Profile</button>
-                    <button id="cancel-btn" class="btn btn-cancel edit-mode">✖ Cancel</button>
+                <div>
+                    <button id="edit-btn" class="dash-btn dash-btn-primary view-mode">✏️ Edit Profile</button>
+                    <button id="cancel-btn" class="dash-btn dash-btn-danger edit-mode">✖ Cancel</button>
                 </div>
             </div>
 
-            <div class="profile-tabs view-mode">
-                <div class="profile-tab active" onclick="switchTab('profile')">Profile Info</div>
+            <div class="profile-tabs-nav view-mode">
+                <button class="profile-tab active" onclick="switchTab('profile')">Profile Info</button>
                 <?php if (!$profile["is_finding_job"]): ?>
-                    <div class="profile-tab" id="tab-companies" onclick="switchTab('companies')">My Companies</div>
-                    <div class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')">My Posted Jobs</div>
+                    <button class="profile-tab" id="tab-companies" onclick="switchTab('companies')">My Companies</button>
+                    <button class="profile-tab" id="tab-my-jobs" onclick="switchTab('jobs')">My Posted Jobs</button>
                 <?php else: ?>
-                    <div class="profile-tab" id="tab-my-apps" onclick="switchTab('apps')">My Applications</div>
+                    <button class="profile-tab" id="tab-my-apps" onclick="switchTab('apps')">My Applications</button>
                 <?php endif; ?>
             </div>
 
-            <div id="alert" class="alert"></div>
+            <div id="alert" class="profile-alert"></div>
 
             <div id="view-mode" class="view-mode tab-content active">
 
                 <?php if (!empty($profile["working_at"])): ?>
-                    <div style="background: #f0fdf4; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
-                        <h4 style="margin: 0 0 10px; color: #155724;">🏢 Company Affiliations</h4>
+                    <div class="dynamic-list-item" style="border-left-color: var(--emerald-500); background: rgba(16,185,129,0.05);">
+                        <h4 style="margin: 0 0 10px; color: var(--emerald-400);">🏢 Company Affiliations</h4>
                         <?php foreach ($profile["working_at"] as $comp): ?>
-                            <div style="font-size: 14px; color: #155724; display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
-                                <strong><?php echo htmlspecialchars(
-                                    $comp["designation"],
-                                ); ?></strong>
+                            <div style="font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                                <strong><?php echo htmlspecialchars($comp["designation"]); ?></strong>
                                 &nbsp;at&nbsp;
-                                <a href="company.php?id=<?php echo urlencode(
-                                    $comp["company_id"],
-                                ); ?>" style="color: #0c5460; font-weight: bold; text-decoration: underline;">
-                                    <?php echo htmlspecialchars(
-                                        $comp["company_name"],
-                                    ); ?>
+                                <a href="company.php?id=<?php echo urlencode($comp["company_id"]); ?>" style="color: var(--cyan-400); font-weight: bold; text-decoration: none;">
+                                    <?php echo htmlspecialchars($comp["company_name"]); ?>
                                 </a>
                                 <?php if ($comp["is_verified"]): ?>
-                                    <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: white;">✓ Verified</span>
+                                    <span class="dash-badge badge-salary" style="margin-left: 10px; padding: 0.1rem 0.5rem; font-size: 0.7rem;">✓ Verified</span>
                                 <?php else: ?>
-                                    <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                    <span class="dash-badge" style="margin-left: 10px; padding: 0.1rem 0.5rem; font-size: 0.7rem; background: rgba(245,158,11,0.1); color: var(--amber-400); border: 1px solid rgba(245,158,11,0.3);">⏳ Pending</span>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
 
-                <div style="text-align: center; margin-bottom: 30px;">
+                <div style="text-align: center; margin-bottom: 2.5rem;">
                     <?php if (!empty($profile["profile_picture"])): ?>
-                        <img src="<?php echo htmlspecialchars(
-                            $profile["profile_picture"],
-                        ); ?>" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #667eea; margin-bottom: 15px;">
+                        <img src="<?php echo htmlspecialchars($profile["profile_picture"]); ?>" class="profile-avatar-display">
                     <?php else: ?>
-                        <div style="width: 120px; height: 120px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 40px;">👤</div>
+                        <div class="profile-avatar-display">👤</div>
                     <?php endif; ?>
 
                     <?php if (!empty($profile["resume"])): ?>
-                        <div><a href="<?php echo htmlspecialchars(
-                            $profile["resume"],
-                        ); ?>" download class="btn" style="background: #28a745; color: white;">📄 Download Current Resume</a></div>
+                        <div style="margin-top: 1rem;">
+                            <a href="<?php echo htmlspecialchars($profile["resume"]); ?>" download class="dash-btn badge-salary">📄 Download Resume</a>
+                        </div>
                     <?php endif; ?>
                 </div>
 
                 <div class="profile-section">
                     <h3>📋 Basic Information</h3>
                     <div class="info-grid">
-                        <div class="info-label">Username:</div>
-                        <div class="info-value"><?php echo htmlspecialchars(
-                            $profile["uid"],
-                        ); ?></div>
-                        <div class="info-label">Name:</div>
-                        <div class="info-value"><?php echo htmlspecialchars(
-                            $profile["name"],
-                        ); ?></div>
-                        <div class="info-label">Email:</div>
-                        <div class="info-value"><?php echo htmlspecialchars(
-                            $profile["email"],
-                        ); ?></div>
-                        <div class="info-label">Account Role:</div>
+                        <div class="info-label">Username</div>
+                        <div class="info-value"><?php echo htmlspecialchars($profile["uid"]); ?></div>
+                        <div class="info-label">Name</div>
+                        <div class="info-value"><?php echo htmlspecialchars($profile["name"]); ?></div>
+                        <div class="info-label">Email</div>
+                        <div class="info-value"><?php echo htmlspecialchars($profile["email"]); ?></div>
+                        <div class="info-label">Account Role</div>
                         <div class="info-value">
                             <?php if ($profile["is_finding_job"]): ?>
-                                <span class="status-badge status-active">🔍 Job Seeker</span>
+                                <span class="dash-badge badge-role">🔍 Job Seeker</span>
                             <?php else: ?>
-                                <span class="status-badge status-poster">📢 Job Poster</span>
+                                <span class="dash-badge badge-salary" style="color: var(--amber-400); border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.1);">📢 Job Poster</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -331,74 +272,56 @@ if (
                 <?php if (!empty($profile["about_user"])): ?>
                 <div class="profile-section">
                     <h3>📝 About Me</h3>
-                    <p style="color: #555; line-height: 1.6;"><?php echo nl2br(
-                        htmlspecialchars($profile["about_user"]),
-                    ); ?></p>
+                    <div style="background: rgba(99,102,241,0.02); padding: 1.5rem; border-radius: var(--r-md); border: 1px solid rgba(99,102,241,0.08);">
+                        <p style="color: var(--text-main); line-height: 1.6;"><?php echo nl2br(htmlspecialchars($profile["about_user"])); ?></p>
+                    </div>
                 </div>
                 <?php endif; ?>
 
                 <div class="profile-section">
                     <h3>🎯 Skills</h3>
                     <?php if (!empty($profile["skills"])): ?>
-                        <div class="skills-container">
+                        <div class="card-tags">
                             <?php foreach ($profile["skills"] as $skill): ?>
-                                <span class="skill-tag"><?php echo htmlspecialchars(
-                                    $skill,
-                                ); ?></span>
+                                <span class="dash-badge badge-skill"><?php echo htmlspecialchars($skill); ?></span>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <p class="empty-state">No skills added yet</p>
+                        <p class="dash-empty">No skills added yet</p>
                     <?php endif; ?>
                 </div>
 
                 <div class="profile-section">
                     <h3>💼 Work Experience</h3>
                     <?php if (!empty($profile["current_work"])): ?>
-                        <div class="education-item" style="border-left-color: #28a745;">
+                        <div class="dynamic-list-item" style="border-left-color: var(--emerald-500);">
                             <div>
-                                <span class="edu-level-badge" style="background: #28a745;">Current Role</span>
-                                <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
-                                    $profile["current_work"]["worked_as"],
-                                ); ?></strong>
+                                <span class="dash-badge badge-salary" style="margin-bottom: 0.5rem;">Current Role</span>
+                                <strong style="margin-left: 10px; font-size: 1.1rem; color: var(--text-primary);"><?php echo htmlspecialchars($profile["current_work"]["worked_as"]); ?></strong>
                             </div>
-                            <div style="margin-top: 8px;">
-                                🏢 <?php echo htmlspecialchars(
-                                    $profile["current_work"]["company"],
-                                ); ?>
-                                • ⏱️ <?php echo formatExp(
-                                    $profile["current_work"]["exp"],
-                                ); ?>
+                            <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.9rem;">
+                                🏢 <?php echo htmlspecialchars($profile["current_work"]["company"]); ?>
+                                &nbsp;•&nbsp; ⏱️ <?php echo formatExp($profile["current_work"]["exp"]); ?>
                             </div>
                         </div>
                     <?php endif; ?>
 
                     <?php if (!empty($profile["previous_experience"])): ?>
-                        <?php foreach (
-                            $profile["previous_experience"]
-                            as $exp
-                        ): ?>
-                            <div class="education-item">
-                                <div>
-                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
-                                        $exp["worked_as"],
-                                    ); ?></strong>
-                                </div>
-                                <div style="margin-top: 8px;">
-                                    🏢 <?php echo htmlspecialchars(
-                                        $exp["company"],
-                                    ); ?>
-                                    • ⏱️ <?php echo formatExp($exp["exp"]); ?>
+                        <?php foreach ($profile["previous_experience"] as $exp): ?>
+                            <div class="dynamic-list-item">
+                                <strong style="font-size: 1.1rem; color: var(--text-primary);"><?php echo htmlspecialchars($exp["worked_as"]); ?></strong>
+                                <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.9rem;">
+                                    🏢 <?php echo htmlspecialchars($exp["company"]); ?>
+                                    &nbsp;•&nbsp; ⏱️ <?php echo formatExp($exp["exp"]); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
 
-                    <?php if (
-                        empty($profile["current_work"]) &&
-                        empty($profile["previous_experience"])
-                    ): ?>
-                        <p class="empty-state">No work experience records added yet</p>
+                    <?php if (empty($profile["current_work"]) && empty($profile["previous_experience"])): ?>
+                        <div class="dash-empty">
+                            <p>No work experience records added yet</p>
+                        </div>
                     <?php endif; ?>
                 </div>
 
@@ -406,84 +329,62 @@ if (
                     <h3>🎓 Education</h3>
                     <?php if (!empty($profile["education"])): ?>
                         <?php foreach ($profile["education"] as $edu): ?>
-                            <div class="education-item">
+                            <div class="dynamic-list-item" style="border-left-color: var(--cyan-400);">
                                 <div>
-                                    <span class="edu-level-badge"><?php echo htmlspecialchars(
-                                        $edu["education"],
-                                    ); ?></span>
-                                    <strong style="margin-left: 10px;"><?php echo htmlspecialchars(
-                                        $edu["major"],
-                                    ); ?></strong>
+                                    <span class="dash-badge badge-location" style="margin-bottom: 0.5rem;"><?php echo htmlspecialchars($edu["education"]); ?></span>
+                                    <strong style="margin-left: 10px; font-size: 1.1rem; color: var(--text-primary);"><?php echo htmlspecialchars($edu["major"]); ?></strong>
                                 </div>
-                                <div style="margin-top: 8px;">
-                                    📍 <?php echo htmlspecialchars(
-                                        $edu["edu_institution"],
-                                    ); ?>
+                                <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.9rem;">
+                                    📍 <?php echo htmlspecialchars($edu["edu_institution"]); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <p class="empty-state">No education records added yet</p>
+                        <div class="dash-empty">
+                            <p>No education records added yet</p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
 
             <div id="content-companies" class="view-mode tab-content">
                 <div class="profile-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h3 style="margin: 0;">🏢 My Affiliated Companies</h3>
-                        <a href="create_company.php" class="btn btn-primary" style="width: auto; margin: 0; padding: 10px 20px;">➕ Register New Company</a>
+                        <a href="create_company.php" class="dash-btn dash-btn-primary">➕ Register New Company</a>
                     </div>
 
                     <?php if (!empty($profile["working_at"])): ?>
                         <?php foreach ($profile["working_at"] as $comp): ?>
-                            <div class="posted-job-card" style="display: flex; gap: 20px; align-items: center;">
-                                <div style="width: 60px; height: 60px; border-radius: 8px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 24px;">🏢</div>
+                            <div class="dash-card" style="flex-direction: row; align-items: center; gap: 1.5rem; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; border-radius: var(--r-sm); background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; font-size: 20px;">🏢</div>
                                 <div style="flex: 1;">
-                                    <h3 style="margin: 0 0 5px;">
-                                        <a href="company.php?id=<?php echo urlencode(
-                                            $comp["company_id"],
-                                        ); ?>" style="text-decoration: none; color: #333;">
-                                            <?php echo htmlspecialchars(
-                                                $comp["company_name"],
-                                            ); ?>
-                                        </a>
+                                    <h3 class="card-title" style="margin-bottom: 0.2rem;">
+                                        <a href="company.php?id=<?php echo urlencode($comp["company_id"]); ?>"><?php echo htmlspecialchars($comp["company_name"]); ?></a>
                                     </h3>
-                                    <div style="color: #666; font-size: 14px;">
-                                        <strong>Role:</strong> <?php echo htmlspecialchars(
-                                            $comp["designation"],
-                                        ); ?>
+                                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                        <strong>Role:</strong> <?php echo htmlspecialchars($comp["designation"]); ?>
                                         <?php if ($comp["is_verified"]): ?>
-                                            <span style="color: #28a745; font-size: 11px; margin-left: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; background: #f0fdf4;">✓ Verified</span>
+                                            <span class="dash-badge badge-salary" style="padding: 0.1rem 0.4rem; font-size: 0.65rem; margin-left: 0.5rem;">✓ Verified</span>
                                         <?php else: ?>
-                                            <span style="color: #856404; font-size: 11px; margin-left: 10px; border: 1px solid #ffeeba; padding: 2px 5px; border-radius: 4px; background: #fff3cd;">⏳ Pending Verification</span>
+                                            <span class="dash-badge" style="padding: 0.1rem 0.4rem; font-size: 0.65rem; margin-left: 0.5rem; background: rgba(245,158,11,0.1); color: var(--amber-400); border: 1px solid rgba(245,158,11,0.3);">⏳ Pending</span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
-
-                                <div style="display:flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                                    <a href="company.php?id=<?php echo urlencode(
-                                        $comp["company_id"],
-                                    ); ?>" class="btn btn-secondary">View Profile</a>
-                                    <?php if (
-                                        isset($comp["is_owner"]) &&
-                                        $comp["is_owner"]
-                                    ): ?>
-                                        <a href="edit_company.php?id=<?php echo urlencode(
-                                            $comp["company_id"],
-                                        ); ?>" class="btn btn-secondary" style="background:#17a2b8; text-decoration:none;">Edit</a>
-                                        <button onclick="deleteCompany('<?php echo htmlspecialchars(
-                                            $comp["company_id"],
-                                        ); ?>')" class="btn btn-secondary" style="background:#dc3545; border:none; cursor:pointer;">Delete</button>
+                                <div style="display:flex; gap: 0.5rem;">
+                                    <a href="company.php?id=<?php echo urlencode($comp["company_id"]); ?>" class="dash-btn dash-btn-glass">View</a>
+                                    <?php if (isset($comp["is_owner"]) && $comp["is_owner"]): ?>
+                                        <a href="edit_company.php?id=<?php echo urlencode($comp["company_id"]); ?>" class="dash-btn dash-btn-glass" style="color: var(--cyan-400);">Edit</a>
+                                        <button onclick="deleteCompany('<?php echo htmlspecialchars($comp["company_id"]); ?>')" class="dash-btn dash-btn-danger">Delete</button>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="empty-state" style="text-align: center; padding: 40px 20px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ddd;">
-                            <div style="font-size: 40px; margin-bottom: 10px;">🏢</div>
-                            <p>You are not currently affiliated with any company.</p>
-                            <p style="font-size: 13px; color: #888; margin-top: 5px;">Register your company to start posting jobs and managing employees.</p>
+                        <div class="dash-empty">
+                            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🏢</div>
+                            <h3>No Affiliations</h3>
+                            <p>Register your company to start posting jobs and managing employees.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -491,90 +392,71 @@ if (
 
             <div id="content-jobs" class="view-mode tab-content">
                 <div id="my-jobs-list">
-                    <p>Loading your job posts...</p>
+                    <p style="color: var(--text-muted);">Loading your job posts...</p>
                 </div>
             </div>
 
             <div id="content-apps" class="view-mode tab-content">
                 <div class="profile-section">
-                    <h3 style="margin-bottom: 20px;">📝 My Job Applications</h3>
+                    <h3 style="margin-bottom: 1.5rem;">📝 My Job Applications</h3>
                     <div id="my-apps-list">
-                        <p>Loading your applications...</p>
+                        <p style="color: var(--text-muted);">Loading your applications...</p>
                     </div>
                 </div>
             </div>
 
             <div id="edit-mode" class="edit-mode">
-                <div class="profile-section" style="background: #f8f9fa; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;">
-                    <h3>🏢 Company Affiliations</h3>
+                
+                <div class="profile-section" style="background: rgba(99,102,241,0.02); border: 1px solid rgba(99,102,241,0.1); padding: 1.5rem; border-radius: var(--r-md);">
+                    <h3 style="margin-bottom: 0.5rem;">🏢 Company Affiliations</h3>
                     <?php if (!empty($profile["working_at"])): ?>
                         <?php foreach ($profile["working_at"] as $comp): ?>
-                            <p style="font-size: 14px; margin-bottom: 5px;">You are affiliated with <strong><?php echo htmlspecialchars(
-                                $comp["company_name"],
-                            ); ?></strong>.</p>
-                            <a href="company.php?id=<?php echo urlencode(
-                                $comp["company_id"],
-                            ); ?>" class="btn btn-secondary" style="display:inline-block; background:#6c757d; text-decoration:none; padding:5px 10px; font-size:12px; margin-bottom:15px;">View Company Page</a><br>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">You are affiliated with <strong style="color: var(--text-primary);"><?php echo htmlspecialchars($comp["company_name"]); ?></strong>.</p>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <p style="color: #666; font-size: 14px; margin-bottom: 10px;">You are not currently linked to any company.</p>
-                        <p style="font-size: 12px; color: #888;">If you are an employer, you can search and join your company, or create a new one from your dashboard.</p>
-                        <a href="dashboard.php" class="btn btn-secondary" style="display:inline-block; background:#17a2b8; text-decoration:none;">Back to Dashboard</a>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">You are not currently linked to any company.</p>
                     <?php endif; ?>
                 </div>
 
-                <form id="profile-form">
+                <form id="profile-form" enctype="multipart/form-data">
+                    
                     <div class="profile-section">
                         <h3>📋 Basic Information & Files</h3>
 
-                        <div class="form-group">
-                            <label for="profile_picture">Profile Picture (Image)</label>
-                            <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label class="form-label" for="profile_picture">Profile Picture (Image)</label>
+                            <input type="file" id="profile_picture" name="profile_picture" accept="image/*" class="form-input">
                         </div>
-                        <div class="form-group">
-                            <label for="resume">Resume (PDF/Word)</label>
-                            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx">
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label class="form-label" for="resume">Resume (PDF/Word)</label>
+                            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" class="form-input">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="name">Name *</label>
+                                <input type="text" id="name" name="name" class="form-input" value="<?php echo htmlspecialchars($profile["name"]); ?>" required style="padding-left: 1rem;">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email *</label>
+                                <input type="email" id="email" name="email" class="form-input" value="<?php echo htmlspecialchars($profile["email"]); ?>" required style="padding-left: 1rem;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label class="form-label" for="about_user">About Me (Brief Bio)</label>
+                            <textarea id="about_user" name="about_user" class="form-input" placeholder="Tell us a little about yourself..."><?php echo htmlspecialchars($profile["about_user"] ?? ""); ?></textarea>
                         </div>
 
                         <div class="form-group">
-                            <label for="name">Name *</label>
-                            <input type="text" id="name" name="name" value="<?php echo htmlspecialchars(
-                                $profile["name"],
-                            ); ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars(
-                                $profile["email"],
-                            ); ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="about_user">About Me (Brief Bio)</label>
-                            <textarea id="about_user" name="about_user" placeholder="Tell us a little about yourself..."><?php echo htmlspecialchars(
-                                $profile["about_user"] ?? "",
-                            ); ?></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Primary Role</label>
+                            <label class="form-label">Primary Role</label>
                             <div class="toggle-switch-container">
-                                <span class="toggle-label <?php echo !$profile[
-                                    "is_finding_job"
-                                ]
-                                    ? "active"
-                                    : ""; ?>" id="label-poster">Job Poster</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="is_finding_job" name="is_finding_job" <?php echo $profile[
-                                        "is_finding_job"
-                                    ]
-                                        ? "checked"
-                                        : ""; ?> onchange="updateToggleLabels()">
-                                    <span class="slider round"></span>
+                                <span class="toggle-label <?php echo !$profile["is_finding_job"] ? "active" : ""; ?>" id="label-poster">Job Poster</span>
+                                <label class="theme-switch">
+                                    <input type="checkbox" id="is_finding_job" name="is_finding_job" <?php echo $profile["is_finding_job"] ? "checked" : ""; ?> onchange="updateToggleLabels()">
+                                    <span class="theme-slider"></span>
                                 </label>
-                                <span class="toggle-label <?php echo $profile[
-                                    "is_finding_job"
-                                ]
-                                    ? "active"
-                                    : ""; ?>" id="label-seeker">Job Seeker</span>
+                                <span class="toggle-label <?php echo $profile["is_finding_job"] ? "active" : ""; ?>" id="label-seeker">Job Seeker</span>
                             </div>
                         </div>
                     </div>
@@ -582,8 +464,8 @@ if (
                     <div class="profile-section">
                         <h3>🎯 Skills</h3>
                         <div class="form-group">
-                            <label for="skills_input">Add Skills</label>
-                            <input type="text" id="skills_input" placeholder="Type a skill and press Enter">
+                            <label class="form-label" for="skills_input">Add Skills</label>
+                            <input type="text" id="skills_input" class="form-input" placeholder="Type a skill and press Enter" style="padding-left: 1rem;">
                             <div class="helper-text">Press Enter after typing each skill</div>
                             <div id="skills_tags" class="tags-display"></div>
                         </div>
@@ -597,16 +479,18 @@ if (
                     <div class="profile-section">
                         <h3>🕰️ Previous Experience</h3>
                         <div id="previous-experience-container"></div>
-                        <button type="button" class="btn btn-add" id="add-experience-btn">➕ Add Experience Record</button>
+                        <button type="button" class="dash-btn dash-btn-glass" id="add-experience-btn">➕ Add Experience Record</button>
                     </div>
 
                     <div class="profile-section">
                         <h3>🎓 Education</h3>
                         <div id="education-container"></div>
-                        <button type="button" class="btn btn-add" id="add-education-btn">➕ Add Education Record</button>
+                        <button type="button" class="dash-btn dash-btn-glass" id="add-education-btn">➕ Add Education Record</button>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" id="save-btn">💾 Save Changes</button>
+                    <div style="margin-top: 3rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2rem;">
+                        <button type="submit" class="dash-btn dash-btn-primary" id="save-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;">💾 Save Changes</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -619,18 +503,12 @@ if (
         const cancelBtn = document.getElementById('cancel-btn');
         const profileForm = document.getElementById('profile-form');
         const saveBtn = document.getElementById('save-btn');
-        const alert = document.getElementById('alert');
+        const alertBox = document.getElementById('alert');
 
         let skills = <?php echo json_encode($profile["skills"] ?? []); ?>;
-        let educationRecords = <?php echo json_encode(
-            $profile["education"] ?? [],
-        ); ?>;
-        let currentWork = <?php echo json_encode(
-            $profile["current_work"] ?? null,
-        ); ?>;
-        let previousExperience = <?php echo json_encode(
-            $profile["previous_experience"] ?? [],
-        ); ?>;
+        let educationRecords = <?php echo json_encode($profile["education"] ?? []); ?>;
+        let currentWork = <?php echo json_encode($profile["current_work"] ?? null); ?>;
+        let previousExperience = <?php echo json_encode($profile["previous_experience"] ?? []); ?>;
 
         const eduLevels = [
             { value: 'SecondarySchool', label: 'Secondary School' },
@@ -671,39 +549,39 @@ if (
 
                 if (result.success && result.data) {
                     if (result.data.length === 0) {
-                        container.innerHTML = '<p class="empty-state">You haven\'t posted any jobs yet.</p>';
+                        container.innerHTML = '<div class="dash-empty"><p>You haven\'t posted any jobs yet.</p></div>';
                         return;
                     }
 
                     let html = '';
                     result.data.forEach(job => {
                         const companyLink = job.company_id
-                            ? `<a href="company.php?id=${encodeURIComponent(job.company_id)}" style="color: #0c5460; font-weight: bold; text-decoration: underline;">${job.company_name}</a>`
+                            ? `<a href="company.php?id=${encodeURIComponent(job.company_id)}" style="color: var(--cyan-400); font-weight: bold; text-decoration: none;">${job.company_name}</a>`
                             : (job.company_name || 'Your Company');
 
                         html += `
-                            <div class="posted-job-card">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <h3 style="color:#333; margin:0;">${job.title}</h3>
-                                    <div>
-                                        <a href="edit_job.php?id=${encodeURIComponent(job.id)}" class="btn btn-secondary" style="background:#17a2b8; padding: 6px 12px; font-size:12px; text-decoration:none;">Edit</a>
-                                        <button onclick="deleteJob('${job.id}')" class="btn btn-secondary" style="background:#dc3545; padding: 6px 12px; font-size:12px; margin-right:10px; border:none; cursor:pointer;">Delete</button>
-                                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
+                            <div class="dash-card" style="margin-bottom: 1.5rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 1rem;">
+                                    <h3 class="card-title" style="margin:0;">${job.title}</h3>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <a href="edit_job.php?id=${encodeURIComponent(job.id)}" class="dash-btn dash-btn-glass" style="color: var(--cyan-400);">Edit</a>
+                                        <button onclick="deleteJob('${job.id}')" class="dash-btn dash-btn-danger">Delete</button>
+                                        <button class="dash-btn dash-btn-primary" onclick="toggleApplicants('${job.id}', this)">View Applicants</button>
                                     </div>
                                 </div>
-                                <p style="color:#666; font-size:14px; margin-top:8px;">🏢 ${companyLink} | 📍 ${job.location} | 💰 $${job.salary_range_start} - $${job.salary_range_end}</p>
-                                <div id="applicants-${job.id}" style="display:none; margin-top: 20px; border-top: 2px dashed #e0e0e0; padding-top: 20px;">
-                                    <p>Loading applicants...</p>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">🏢 ${companyLink} &nbsp;|&nbsp; 📍 ${job.location} &nbsp;|&nbsp; <span style="color:var(--emerald-400); font-family:'JetBrains Mono',monospace;">💰 $${job.salary_range_start} - $${job.salary_range_end}</span></p>
+                                <div id="applicants-${job.id}" style="display:none; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+                                    <p style="color:var(--text-muted); font-size:0.85rem;">Loading applicants...</p>
                                 </div>
                             </div>
                         `;
                     });
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = '<p class="empty-state">Failed to load jobs.</p>';
+                    container.innerHTML = '<div class="dash-empty"><p>Failed to load jobs.</p></div>';
                 }
             } catch (e) {
-                container.innerHTML = '<p class="empty-state">Error loading jobs. Session may have expired.</p>';
+                container.innerHTML = '<div class="dash-empty"><p>Error loading jobs. Session may have expired.</p></div>';
             }
         }
 
@@ -744,14 +622,14 @@ if (
             if (container.style.display === 'block') {
                 container.style.display = 'none';
                 btn.textContent = 'View Applicants';
-                btn.classList.replace('btn-cancel', 'btn-secondary');
+                btn.classList.replace('dash-btn-glass', 'dash-btn-primary');
                 return;
             }
 
             container.style.display = 'block';
             btn.textContent = 'Hide Applicants';
-            btn.classList.replace('btn-secondary', 'btn-cancel');
-            container.innerHTML = '<p>Loading applicants...</p>';
+            btn.classList.replace('dash-btn-primary', 'dash-btn-glass');
+            container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Loading applicants...</p>';
 
             try {
                 const res = await fetch('employer_api.php?action=applicants&job_id=' + encodeURIComponent(jobId));
@@ -760,17 +638,17 @@ if (
 
                 if (result.success && result.data) {
                     if (result.data.length === 0) {
-                        container.innerHTML = '<p class="empty-state" style="margin:0;">No one has applied to this position yet.</p>';
+                        container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">No one has applied to this position yet.</p>';
                         return;
                     }
 
-                    let html = `<h4 style="margin-bottom: 10px; color:#667eea;">${result.data.length} Applicant(s)</h4>`;
+                    let html = `<h4 style="margin-bottom: 1rem; color: var(--indigo-400);">${result.data.length} Applicant(s)</h4>`;
                     result.data.forEach(app => {
                         const dateObj = new Date(app.datetime_applied);
                         const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
 
                         const statusSelect = `
-                            <select onchange="updateAppStatus('${jobId}', '${app.user.id}', this.value)" style="padding: 4px; font-size: 12px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc;">
+                            <select onchange="updateAppStatus('${jobId}', '${app.user.id}', this.value)" class="form-input" style="padding: 0.3rem 0.5rem; font-size: 0.8rem; height: auto; width: auto;">
                                 <option value="Pending" ${app.status.toLowerCase() === 'pending' ? 'selected' : ''}>Pending</option>
                                 <option value="Accepted" ${app.status.toLowerCase() === 'accepted' ? 'selected' : ''}>Accepted</option>
                                 <option value="Rejected" ${app.status.toLowerCase() === 'rejected' ? 'selected' : ''}>Rejected</option>
@@ -778,27 +656,27 @@ if (
                         `;
 
                         html += `
-                            <div class="applicant-card">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <strong style="font-size: 16px;">${app.user.name}</strong>
+                            <div class="dynamic-list-item" style="padding: 1rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 1rem;">
+                                    <strong style="font-size: 1.1rem; color: var(--text-primary);">${app.user.name}</strong>
                                     ${statusSelect}
                                 </div>
-                                <div style="font-size:14px; color:#555; margin-top:8px;">
-                                    📧 <a href="mailto:${app.user.email}" style="color:#667eea; text-decoration:none;">${app.user.email}</a>
+                                <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">
+                                    📧 <a href="mailto:${app.user.email}" style="color:var(--indigo-400); text-decoration:none;">${app.user.email}</a>
                                     <br>🕒 Applied on ${prettyDate}
                                 </div>
-                                <div style="margin-top:12px;">
-                                    <a href="user_details.php?id=${encodeURIComponent(app.user.id)}" target="_blank" class="btn" style="background:#667eea; color:white; padding:8px 15px; font-size:13px; display:inline-block; text-align:center; text-decoration:none;">View Full Profile ↗</a>
+                                <div style="margin-top:1rem;">
+                                    <a href="user_details.php?id=${encodeURIComponent(app.user.id)}" target="_blank" class="dash-btn dash-btn-glass" style="font-size:0.8rem; padding:0.4rem 0.8rem;">View Full Profile ↗</a>
                                 </div>
                             </div>
                         `;
                     });
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = '<p class="empty-state">Failed to load applicants.</p>';
+                    container.innerHTML = '<p style="color:var(--rose-400); font-size:0.85rem;">Failed to load applicants.</p>';
                 }
             } catch (e) {
-                container.innerHTML = '<p class="empty-state">Error parsing applicant data.</p>';
+                container.innerHTML = '<p style="color:var(--rose-400); font-size:0.85rem;">Error parsing applicant data.</p>';
             }
         }
 
@@ -827,32 +705,33 @@ if (
 
                 if (result.success && result.data) {
                     if (result.data.length === 0) {
-                        container.innerHTML = '<p class="empty-state">You have not applied to any jobs yet.</p>';
+                        container.innerHTML = '<div class="dash-empty"><p>You have not applied to any jobs yet.</p></div>';
                         return;
                     }
 
                     let html = '';
                     result.data.forEach(app => {
-                        let statusColor = app.status.toLowerCase() === 'accepted' ? '#28a745' : (app.status.toLowerCase() === 'rejected' ? '#dc3545' : '#856404');
-                        let statusBg = app.status.toLowerCase() === 'accepted' ? '#d4edda' : (app.status.toLowerCase() === 'rejected' ? '#f8d7da' : '#fff3cd');
+                        let statusColor = app.status.toLowerCase() === 'accepted' ? 'var(--emerald-400)' : (app.status.toLowerCase() === 'rejected' ? 'var(--rose-400)' : 'var(--amber-400)');
+                        let statusBg = app.status.toLowerCase() === 'accepted' ? 'rgba(16,185,129,0.1)' : (app.status.toLowerCase() === 'rejected' ? 'rgba(251,113,133,0.1)' : 'rgba(245,158,11,0.1)');
+                        let statusBorder = app.status.toLowerCase() === 'accepted' ? 'rgba(16,185,129,0.3)' : (app.status.toLowerCase() === 'rejected' ? 'rgba(251,113,133,0.3)' : 'rgba(245,158,11,0.3)');
 
                         const dateObj = new Date(app.datetime_applied);
                         const prettyDate = isNaN(dateObj.getTime()) ? 'Recently' : dateObj.toLocaleDateString();
 
                         const companyLink = app.job.company_id
-                            ? `<a href="company.php?id=${encodeURIComponent(app.job.company_id)}" style="color: #0c5460; font-weight: bold; text-decoration: underline;">${app.job.company_name}</a>`
+                            ? `<a href="company.php?id=${encodeURIComponent(app.job.company_id)}" style="color: var(--cyan-400); font-weight: bold; text-decoration: none;">${app.job.company_name}</a>`
                             : (app.job.company_name || app.job.employer_name);
 
                         html += `
-                            <div class="posted-job-card" style="border-left: 4px solid ${statusColor};">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <h3 style="color:#333; margin:0;">${app.job.title}</h3>
-                                    <span style="font-size:12px; font-weight:bold; background:${statusBg}; color:${statusColor}; padding:5px 12px; border-radius:15px;">${app.status.toUpperCase()}</span>
+                            <div class="dash-card" style="border-left: 3px solid ${statusColor}; margin-bottom: 1rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 0.5rem;">
+                                    <h3 class="card-title" style="margin:0;">${app.job.title}</h3>
+                                    <span class="dash-badge" style="background:${statusBg}; color:${statusColor}; border: 1px solid ${statusBorder};">${app.status.toUpperCase()}</span>
                                 </div>
-                                <div style="color:#666; font-size:14px; margin-top:8px;">
-                                    🏢 ${companyLink} | 📍 ${app.job.location}
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
+                                    🏢 ${companyLink} &nbsp;|&nbsp; 📍 ${app.job.location}
                                 </div>
-                                <div style="color:#888; font-size:12px; margin-top:10px;">
+                                <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.75rem;">
                                     Applied on: ${prettyDate}
                                 </div>
                             </div>
@@ -860,10 +739,10 @@ if (
                     });
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = '<p class="empty-state">Failed to load applications.</p>';
+                    container.innerHTML = '<div class="dash-empty"><p>Failed to load applications.</p></div>';
                 }
             } catch (e) {
-                container.innerHTML = '<p class="empty-state">Error loading applications.</p>';
+                container.innerHTML = '<div class="dash-empty"><p>Error loading applications.</p></div>';
             }
         }
 
@@ -892,8 +771,8 @@ if (
             skillsTagsContainer.innerHTML = '';
             skills.forEach((skill, index) => {
                 const tag = document.createElement('div');
-                tag.className = 'skill-tag';
-                tag.innerHTML = `${skill} <span class="skill-tag-remove" onclick="removeSkill(${index})">×</span>`;
+                tag.className = 'editable-skill-tag';
+                tag.innerHTML = `${skill} <span onclick="removeSkill(${index})">×</span>`;
                 skillsTagsContainer.appendChild(tag);
             });
         }
@@ -908,31 +787,33 @@ if (
             const hasWork = currentWork !== null;
             const workedAs = hasWork ? currentWork.worked_as || '' : '';
             const company = hasWork ? currentWork.company || '' : '';
-
             const years = hasWork ? currentWork.exp_y || 0 : 0;
             const months = hasWork ? currentWork.exp_m || 0 : 0;
 
             container.innerHTML = `
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label style="display:inline-flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" id="has_current_work" ${hasWork ? 'checked' : ''} onchange="toggleCurrentWorkFields()" style="width:auto; margin-right:8px;">
-                        I am currently employed
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="has_current_work" class="checkbox-input" onchange="toggleCurrentWorkFields()">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">I am currently employed</span>
                     </label>
                 </div>
-                <div id="current-work-fields" style="display: ${hasWork ? 'block' : 'none'};" class="education-form-item">
-                    <div class="form-group">
-                        <label>Job Title (Worked As) *</label>
-                        <input type="text" id="cw_worked_as" value="${workedAs}" placeholder="e.g., Software Engineer">
+                <div id="current-work-fields" style="display: ${hasWork ? 'block' : 'none'};" class="dynamic-list-item">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Job Title (Worked As) *</label>
+                            <input type="text" id="cw_worked_as" class="form-input" value="${workedAs}" placeholder="e.g., Software Engineer" style="padding-left: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Company *</label>
+                            <input type="text" id="cw_company" class="form-input" value="${company}" placeholder="e.g., Google" style="padding-left: 1rem;">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Company *</label>
-                        <input type="text" id="cw_company" value="${company}" placeholder="e.g., Google">
-                    </div>
-                    <div class="form-group">
-                        <label>Duration of Experience *</label>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="number" id="cw_exp_y" min="0" value="${years}" placeholder="Years" style="flex: 1;">
-                            <input type="number" id="cw_exp_m" min="0" max="11" value="${months}" placeholder="Months" style="flex: 1;">
+                        <label class="form-label">Duration of Experience *</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="number" id="cw_exp_y" class="form-input" min="0" value="${years}" placeholder="Years" style="flex: 1; padding-left: 1rem;">
+                            <input type="number" id="cw_exp_m" class="form-input" min="0" max="11" value="${months}" placeholder="Months" style="flex: 1; padding-left: 1rem;">
                         </div>
                     </div>
                 </div>
@@ -948,7 +829,7 @@ if (
         function renderPreviousExperience() {
             prevExpContainer.innerHTML = '';
             if (previousExperience.length === 0) {
-                prevExpContainer.innerHTML = '<p class="empty-state">No previous experience added.</p>';
+                prevExpContainer.innerHTML = '<div class="dash-empty" style="padding: 2rem;"><p>No previous experience added.</p></div>';
                 return;
             }
             previousExperience.forEach((exp, index) => {
@@ -956,22 +837,24 @@ if (
                 const months = exp.exp_m || 0;
 
                 const item = document.createElement('div');
-                item.className = 'education-form-item';
+                item.className = 'dynamic-list-item';
                 item.innerHTML = `
-                    <button type="button" class="remove-btn" onclick="removeExperience(${index})">×</button>
-                    <div class="form-group">
-                        <label>Job Title (Worked As) *</label>
-                        <input type="text" class="exp-worked-as" value="${exp.worked_as || ''}" required>
+                    <div class="remove-btn-corner" onclick="removeExperience(${index})">×</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Job Title (Worked As) *</label>
+                            <input type="text" class="exp-worked-as form-input" value="${exp.worked_as || ''}" required style="padding-left: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Company *</label>
+                            <input type="text" class="exp-company form-input" value="${exp.company || ''}" required style="padding-left: 1rem;">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Company *</label>
-                        <input type="text" class="exp-company" value="${exp.company || ''}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Duration of Experience *</label>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="number" class="exp-y" min="0" value="${years}" placeholder="Years" required style="flex: 1;">
-                            <input type="number" class="exp-m" min="0" max="11" value="${months}" placeholder="Months" required style="flex: 1;">
+                        <label class="form-label">Duration of Experience *</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="number" class="exp-y form-input" min="0" value="${years}" placeholder="Years" required style="flex: 1; padding-left: 1rem;">
+                            <input type="number" class="exp-m form-input" min="0" max="11" value="${months}" placeholder="Months" required style="flex: 1; padding-left: 1rem;">
                         </div>
                     </div>
                 `;
@@ -993,7 +876,7 @@ if (
         function renderEducation() {
             educationContainer.innerHTML = '';
             if (educationRecords.length === 0) {
-                educationContainer.innerHTML = '<p class="empty-state">No education records.</p>';
+                educationContainer.innerHTML = '<div class="dash-empty" style="padding: 2rem;"><p>No education records added.</p></div>';
                 return;
             }
             educationRecords.forEach((edu, index) => {
@@ -1002,22 +885,24 @@ if (
                     currentEduValue = eduLevels[currentEduValue].value;
                 }
                 const eduItem = document.createElement('div');
-                eduItem.className = 'education-form-item';
+                eduItem.className = 'dynamic-list-item';
                 eduItem.innerHTML = `
-                    <button type="button" class="remove-btn" onclick="removeEducation(${index})">×</button>
-                    <div class="form-group">
-                        <label>Education Level *</label>
-                        <select class="edu-level" required>
+                    <div class="remove-btn-corner" onclick="removeEducation(${index})">×</div>
+                    <div class="form-group" style="margin-bottom: 1rem; max-width: 50%;">
+                        <label class="form-label">Education Level *</label>
+                        <select class="edu-level form-input" required>
                             ${eduLevels.map(level => `<option value="${level.value}" ${currentEduValue === level.value ? 'selected' : ''}>${level.label}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Major/Field of Study *</label>
-                        <input type="text" class="edu-major" value="${edu.major || ''}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Institution Name *</label>
-                        <input type="text" class="edu-institution" value="${edu.edu_institution || ''}" required>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Major/Field of Study *</label>
+                            <input type="text" class="edu-major form-input" value="${edu.major || ''}" required style="padding-left: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Institution Name *</label>
+                            <input type="text" class="edu-institution form-input" value="${edu.edu_institution || ''}" required style="padding-left: 1rem;">
+                        </div>
                     </div>
                 `;
                 educationContainer.appendChild(eduItem);
@@ -1050,15 +935,9 @@ if (
 
             profileForm.reset();
             skills = <?php echo json_encode($profile["skills"] ?? []); ?>;
-            educationRecords = <?php echo json_encode(
-                $profile["education"] ?? [],
-            ); ?>;
-            currentWork = <?php echo json_encode(
-                $profile["current_work"] ?? null,
-            ); ?>;
-            previousExperience = <?php echo json_encode(
-                $profile["previous_experience"] ?? [],
-            ); ?>;
+            educationRecords = <?php echo json_encode($profile["education"] ?? []); ?>;
+            currentWork = <?php echo json_encode($profile["current_work"] ?? null); ?>;
+            previousExperience = <?php echo json_encode($profile["previous_experience"] ?? []); ?>;
 
             renderSkills();
             renderEducation();
@@ -1088,7 +967,7 @@ if (
             }
 
             const updatedExperience = [];
-            prevExpContainer.querySelectorAll('.education-form-item').forEach(item => {
+            prevExpContainer.querySelectorAll('.dynamic-list-item').forEach(item => {
                 const workedAs = item.querySelector('.exp-worked-as').value.trim();
                 const company = item.querySelector('.exp-company').value.trim();
 
@@ -1103,7 +982,7 @@ if (
             });
 
             const updatedEducation = [];
-            educationContainer.querySelectorAll('.education-form-item').forEach(item => {
+            educationContainer.querySelectorAll('.dynamic-list-item').forEach(item => {
                 const level = item.querySelector('.edu-level').value;
                 const major = item.querySelector('.edu-major').value.trim();
                 const institution = item.querySelector('.edu-institution').value.trim();
@@ -1128,7 +1007,7 @@ if (
             if (resumeFile) fd.append('resume', resumeFile);
 
             saveBtn.disabled = true;
-            saveBtn.textContent = '💾 Saving...';
+            saveBtn.textContent = '⏳ Saving...';
 
             try {
                 const response = await fetch('profile.php', {
@@ -1137,29 +1016,43 @@ if (
                 });
 
                 const text = await response.text();
-                const result = JSON.parse(text);
+                console.log('Response status:', response.status);
+                console.log('Response text:', text);
+                
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('JSON Parse Error:', parseErr);
+                    console.log('Raw response was:', text.substring(0, 500));
+                    showAlert('Server response error. Check console for details.', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 Save Changes';
+                    return;
+                }
 
                 if (result.status === 'success') {
                     showAlert('Profile updated successfully! Reloading...', 'success');
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    showAlert(result.message, 'error');
+                    showAlert(result.message || 'Failed to update profile', 'error');
                     saveBtn.disabled = false;
                     saveBtn.textContent = '💾 Save Changes';
                 }
             } catch (error) {
-                showAlert('Failed to parse update request properly.', 'error');
+                console.error('Fetch Error:', error);
+                showAlert('Network error or failed request. Check console for details.', 'error');
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 Save Changes';
             }
         });
 
         function showAlert(message, type) {
-            alert.textContent = message;
-            alert.className = `alert alert-${type} show`;
-            setTimeout(() => alert.classList.remove('show'), 5000);
+            alertBox.innerHTML = `<span>${type === 'success' ? '✓' : '⚠️'}</span> ${message}`;
+            alertBox.className = `profile-alert alert-${type} show`;
+            setTimeout(() => alertBox.classList.remove('show'), 5000);
         }
-        function clearAlert() { alert.classList.remove('show'); }
+        function clearAlert() { alertBox.classList.remove('show'); }
 
         window.removeSkill = removeSkill;
         window.removeEducation = removeEducation;

@@ -127,87 +127,90 @@ $verifiedCompanies = array_filter($companies, function ($c) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Create Job Post - Job Portal</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .btn { padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.3s; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .form-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .form-group { margin-bottom: 25px; }
-        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; }
-        .form-group textarea { min-height: 120px; resize: vertical; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .exp-inputs { display: flex; gap: 10px; }
-        .btn-primary { background: #667eea; color: white; width: 100%; padding: 15px; font-size: 16px; }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; }
-        .alert.show { display: block; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .helper-text { font-size: 12px; color: #666; margin-top: 5px; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Job Post — JobPortal</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📝 Create Job Post</h1>
-            <div class="nav-links"><a href="dashboard.php" class="btn btn-secondary">← Back to Dashboard</a></div>
-        </div>
 
-        <div class="form-container">
-            <div id="alert" class="alert"></div>
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dash-container">
+        
+        <header class="dash-header">
+            <h1 class="dash-title">📝 Create Job Post</h1>
+            <div class="dash-nav">
+                <a href="dashboard.php" class="dash-btn dash-btn-glass">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <div class="profile-wrapper">
+            <div id="alert" class="profile-alert"></div>
 
             <form id="job-form" enctype="multipart/form-data">
-                <div class="form-group"><label>Job Photos</label><input type="file" id="photos" name="photos[]" accept="image/*" multiple></div>
-                <div class="form-group"><label>Job Title *</label><input type="text" id="title" required placeholder="e.g., Senior Software Engineer"></div>
+                
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label">Job Photos</label>
+                    <input type="file" id="photos" name="photos[]" accept="image/*" multiple class="form-input">
+                </div>
 
-                <div class="form-row">
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label">Job Title *</label>
+                    <input type="text" id="title" class="form-input" required placeholder="e.g., Senior Software Engineer" style="padding-left: 1rem;">
+                </div>
+
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label>Company *</label>
+                        <label class="form-label">Company *</label>
                         <?php if (empty($verifiedCompanies)): ?>
-                            <p style="color: #dc3545; font-size: 13px; font-weight: bold; margin-bottom: 5px;">
+                            <div class="warning-box">
                                 ⚠️ You must be a verified employee to post jobs.
-                            </p>
-                            <select id="company_select" disabled required>
+                            </div>
+                            <select id="company_select" class="form-input" disabled required style="padding-left: 1rem;">
                                 <option value="">No verified companies</option>
                             </select>
                         <?php else: ?>
-                            <select id="company_select" required>
+                            <select id="company_select" class="form-input" required style="padding-left: 1rem;">
                                 <option value="">-- Select Company --</option>
                                 <?php foreach ($verifiedCompanies as $comp): ?>
-                                    <option value="<?php echo htmlspecialchars(
-                                        $comp["company_id"],
-                                    ); ?>" data-name="<?php echo htmlspecialchars(
-    $comp["company_name"],
-); ?>">
-                                        <?php echo htmlspecialchars(
-                                            $comp["company_name"],
-                                        ); ?>
+                                    <option value="<?php echo htmlspecialchars($comp["company_id"]); ?>" data-name="<?php echo htmlspecialchars($comp["company_name"]); ?>">
+                                        <?php echo htmlspecialchars($comp["company_name"]); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
                     </div>
+                    
                     <div class="form-group">
-                        <label>Minimum Experience</label>
-                        <div class="exp-inputs">
-                            <input type="number" id="min_exp_years" placeholder="Years" min="0">
-                            <input type="number" id="min_exp_months" placeholder="Months" min="0" max="11">
+                        <label class="form-label">Minimum Experience</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="number" id="min_exp_years" class="form-input" placeholder="Years" min="0" style="flex: 1; padding-left: 1rem;">
+                            <input type="number" id="min_exp_months" class="form-input" placeholder="Months" min="0" max="11" style="flex: 1; padding-left: 1rem;">
                         </div>
                     </div>
                 </div>
 
-                <div class="form-group"><label>Job Description *</label><textarea id="description" required></textarea></div>
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label">Job Description *</label>
+                    <textarea id="description" class="form-input" required placeholder="Describe the role, responsibilities, and perks..."></textarea>
+                </div>
 
-                <div class="form-row">
-                    <div class="form-group"><label>Location *</label><input type="text" id="location" required></div>
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label>Minimum Education Level *</label>
-                        <select id="min_ed_lvl" required>
+                        <label class="form-label">Location *</label>
+                        <input type="text" id="location" class="form-input" required placeholder="e.g., Remote or New York, NY" style="padding-left: 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Minimum Education Level *</label>
+                        <select id="min_ed_lvl" class="form-input" required style="padding-left: 1rem;">
                             <option value="">Select education level</option>
                             <option value="1">High School</option>
                             <option value="2">Diploma</option>
@@ -218,18 +221,25 @@ $verifiedCompanies = array_filter($companies, function ($c) {
                     </div>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group"><label>Salary Range Start ($)</label><input type="number" id="salary_start" min="0"></div>
-                    <div class="form-group"><label>Salary Range End ($)</label><input type="number" id="salary_end" min="0"></div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Salary Range Start ($)</label>
+                        <input type="number" id="salary_start" class="form-input" min="0" placeholder="e.g., 60000" style="padding-left: 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Salary Range End ($)</label>
+                        <input type="number" id="salary_end" class="form-input" min="0" placeholder="e.g., 120000" style="padding-left: 1rem;">
+                    </div>
                 </div>
 
-                <div class="form-group"><label>Application Deadline *</label><input type="datetime-local" id="datetime_due" required></div>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label class="form-label">Application Deadline *</label>
+                    <input type="datetime-local" id="datetime_due" class="form-input" required style="padding-left: 1rem;">
+                </div>
 
-                <button type="submit" class="btn btn-primary" id="submit-btn" <?php echo empty(
-                    $verifiedCompanies
-                )
-                    ? "disabled"
-                    : ""; ?>>Create Job Post</button>
+                <button type="submit" class="dash-btn dash-btn-primary" id="submit-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;" <?php echo empty($verifiedCompanies) ? "disabled" : ""; ?>>
+                    🚀 Create Job Post
+                </button>
             </form>
         </div>
     </div>
@@ -266,7 +276,7 @@ $verifiedCompanies = array_filter($companies, function ($c) {
             const photosInput = document.getElementById('photos');
             for(let i = 0; i < photosInput.files.length; i++) { formData.append('photos[]', photosInput.files[i]); }
 
-            submitBtn.disabled = true; submitBtn.textContent = 'Creating...';
+            submitBtn.disabled = true; submitBtn.innerHTML = '⏳ Creating...';
 
             try {
                 const response = await fetch('create_job.php', { method: 'POST', body: formData });
@@ -277,18 +287,19 @@ $verifiedCompanies = array_filter($companies, function ($c) {
                     setTimeout(() => window.location.href = 'dashboard.php', 2000);
                 } else {
                     showAlert(result.message, 'error');
-                    submitBtn.disabled = false; submitBtn.textContent = 'Create Job Post';
+                    submitBtn.disabled = false; submitBtn.innerHTML = '🚀 Create Job Post';
                 }
             } catch (error) {
                 showAlert('Network Error', 'error');
-                submitBtn.disabled = false; submitBtn.textContent = 'Create Job Post';
+                submitBtn.disabled = false; submitBtn.innerHTML = '🚀 Create Job Post';
             }
         });
 
         function showAlert(message, type) {
-            const alert = document.getElementById('alert');
-            alert.textContent = message; alert.className = `alert alert-${type} show`;
-            setTimeout(() => { alert.classList.remove('show'); }, 5000);
+            const alertBox = document.getElementById('alert');
+            alertBox.innerHTML = `<span>${type === 'success' ? '✓' : '⚠️'}</span> ${message}`;
+            alertBox.className = `profile-alert alert-${type} show`;
+            setTimeout(() => { alertBox.classList.remove('show'); }, 5000);
         }
     </script>
 </body>

@@ -63,146 +63,100 @@ $is_owner = $data["is_owner"] ?? false;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars(
-        $company["name"],
-    ); ?> - Company Profile</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .btn-back { display: inline-block; background: #6c757d; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; font-weight: 600; }
-        .profile-card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 30px; }
-        .header-section { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #eee; padding-bottom: 25px; margin-bottom: 25px; }
-        .comp-info { display: flex; gap: 25px; align-items: center; }
-        .comp-info h1 { color: #333; font-size: 32px; margin-bottom: 8px; }
-        .meta { color: #666; font-size: 14px; margin-bottom: 5px; }
-        .btn-join { background: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 15px; font-weight: bold; }
-        .btn-join:disabled { background: #6c757d; cursor: default; }
-        .about-section { margin-bottom: 30px; }
-        .about-section h3 { color: #667eea; margin-bottom: 10px; font-size: 20px; }
-        .about-section p { color: #555; line-height: 1.6; }
-        .employees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .emp-card { border: 1px solid #e0e0e0; border-left: 4px solid #667eea; border-radius: 8px; padding: 15px; background: #fafafa; }
-        .emp-card h4 { color: #333; margin-bottom: 3px; font-size: 16px; }
-        .emp-card a { text-decoration: none; color: inherit; }
-        .emp-card a:hover h4 { color: #667eea; }
-        .emp-card .role { font-size: 13px; font-weight: bold; color: #667eea; margin-bottom: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;}
-        .emp-card .since { font-size: 12px; color: #888; margin-top: 4px; }
-        .badge-verified { color: #28a745; font-size: 10px; border: 1px solid #28a745; padding: 2px 5px; border-radius: 4px; display: inline-block;}
-        .badge-unverified { color: #856404; font-size: 10px; background: #fff3cd; padding: 3px 5px; border-radius: 4px; display: inline-block;}
-    </style>
+    <title><?php echo htmlspecialchars($company["name"]); ?> — Company Profile</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <a href="dashboard.php" class="btn-back">← Back to Dashboard</a>
+    <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-        <div class="profile-card">
-            <div class="header-section">
-                <div class="comp-info">
+    <div class="dash-container">
+        <header class="dash-header">
+            <h1 class="dash-title">Company Profile</h1>
+            <div class="dash-nav">
+                <a href="dashboard.php" class="dash-btn dash-btn-glass">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <div class="profile-wrapper">
+            <div class="details-header" style="align-items: center;">
+                <div style="display: flex; gap: 1.5rem; align-items:center;">
                     <?php if (!empty($company["logo"])): ?>
-                        <img src="<?php echo htmlspecialchars(
-                            $company["logo"],
-                        ); ?>" style="width: 100px; height: 100px; border-radius: 10px; object-fit: contain; border: 1px solid #ddd; background: #fff;">
+                        <img src="<?php echo htmlspecialchars($company["logo"]); ?>" style="width: 100px; height: 100px; border-radius: var(--r-md); object-fit: contain; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">
                     <?php else: ?>
-                        <div style="width: 100px; height: 100px; border-radius: 10px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 40px;">🏢</div>
+                        <div style="width: 100px; height: 100px; border-radius: var(--r-md); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">🏢</div>
                     <?php endif; ?>
 
                     <div>
-                        <h1><?php echo htmlspecialchars(
-                            $company["name"],
-                        ); ?></h1>
-                        <?php if (!empty($company["location"])): ?>
-                            <div class="meta">📍 <?php echo htmlspecialchars(
-                                $company["location"],
-                            ); ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($company["website"])): ?>
-                            <div class="meta">🌐 <a href="<?php echo htmlspecialchars(
-                                $company["website"],
-                            ); ?>" target="_blank" style="color:#667eea;"><?php echo htmlspecialchars(
-    $company["website"],
-); ?></a></div>
-                        <?php endif; ?>
+                        <h1 class="details-title" style="font-size: 2rem; margin-bottom: 0.4rem;"><?php echo htmlspecialchars($company["name"]); ?></h1>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem;">
+                            <?php if (!empty($company["location"])): ?>
+                                <span>📍 <?php echo htmlspecialchars($company["location"]); ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($company["website"])): ?>
+                                <span>🌐 <a href="<?php echo htmlspecialchars($company["website"]); ?>" target="_blank" style="color:var(--cyan-400); text-decoration:none;"><?php echo htmlspecialchars($company["website"]); ?></a></span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
                 <div>
                     <?php if ($is_employee): ?>
-                        <button class="btn-join" disabled>✓ You work here</button>
+                        <button class="dash-btn dash-btn-glass" disabled style="color: var(--emerald-400); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">✓ You work here</button>
                     <?php else: ?>
-                        <button class="btn-join" id="join-btn" onclick="promptJoin('<?php echo htmlspecialchars(
-                            $company["id"],
-                        ); ?>')">🤝 Join Company</button>
+                        <button class="dash-btn dash-btn-primary" id="join-btn" onclick="promptJoin('<?php echo htmlspecialchars($company["id"]); ?>')">🤝 Join Company</button>
                     <?php endif; ?>
                 </div>
             </div>
 
             <?php if (!empty($company["description"])): ?>
-                <div class="about-section">
-                    <h3>About Us</h3>
-                    <p><?php echo nl2br(
-                        htmlspecialchars($company["description"]),
-                    ); ?></p>
+                <div class="profile-section">
+                    <h3>🏢 About Us</h3>
+                    <div style="background: rgba(99,102,241,0.02); padding: 1.5rem; border-radius: var(--r-md); border: 1px solid rgba(99,102,241,0.08);">
+                        <p style="color: var(--text-main); line-height: 1.6;"><?php echo nl2br(htmlspecialchars($company["description"])); ?></p>
+                    </div>
                 </div>
             <?php endif; ?>
 
-            <div class="about-section">
-                <h3>Our Employees (<?php echo count($employees); ?>)</h3>
+            <div class="profile-section">
+                <h3>👥 Our Employees (<?php echo count($employees); ?>)</h3>
+                
                 <?php if (empty($employees)): ?>
-                    <p style="color: #888; font-style: italic;">No employees listed yet.</p>
+                    <p class="dash-empty">No employees listed yet.</p>
                 <?php else: ?>
-                    <div class="employees-grid">
+                    <div class="dash-grid">
                         <?php foreach ($employees as $emp): ?>
-                            <div class="emp-card">
-                                <a href="user_details.php?id=<?php echo urlencode(
-                                    $emp["user"]["id"],
-                                ); ?>" style="text-decoration: none; color: inherit; display: block; margin-bottom: 10px;">
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <?php if (
-                                            !empty(
-                                                $emp["user"]["profile_picture"]
-                                            )
-                                        ): ?>
-                                            <img src="<?php echo htmlspecialchars(
-                                                $emp["user"]["profile_picture"],
-                                            ); ?>" style="width:45px; height:45px; border-radius:50%; object-fit:cover;">
+                            <div class="dash-card">
+                                <a href="user_details.php?id=<?php echo urlencode($emp["user"]["id"]); ?>" style="text-decoration: none; color: inherit; display: block; margin-bottom: 1rem;">
+                                    <div style="display: flex; gap: 1rem; align-items: center;">
+                                        <?php if (!empty($emp["user"]["profile_picture"])): ?>
+                                            <img src="<?php echo htmlspecialchars($emp["user"]["profile_picture"]); ?>" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border: 2px solid rgba(99,102,241,0.3);">
                                         <?php else: ?>
-                                            <div style="width:45px; height:45px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center; font-size:20px;">👤</div>
+                                            <div style="width:50px; height:50px; border-radius:50%; background:rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">👤</div>
                                         <?php endif; ?>
 
                                         <div>
-                                            <h4 style="color: #333; margin-bottom: 3px; font-size: 16px;"><?php echo htmlspecialchars(
-                                                $emp["user"]["name"],
-                                            ); ?></h4>
-
-                                            <div class="role" style="display: flex; align-items: center; font-size: 13px; font-weight: bold; color: #667eea;">
-                                                <?php echo htmlspecialchars(
-                                                    $emp["designation"],
-                                                ); ?>
-                                                <?php if (
-                                                    $emp["is_verified"]
-                                                ): ?>
-                                                    <span class="badge-verified" style="margin-left: 5px;">✓ Verified</span>
+                                            <h4 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.2rem;"><?php echo htmlspecialchars($emp["user"]["name"]); ?></h4>
+                                            
+                                            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.3rem;">
+                                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--indigo-400);"><?php echo htmlspecialchars($emp["designation"]); ?></span>
+                                                <?php if ($emp["is_verified"]): ?>
+                                                    <span class="dash-badge badge-salary" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;">✓ Verified</span>
                                                 <?php else: ?>
-                                                    <span class="badge-unverified" style="margin-left: 5px;">⏳ Unverified</span>
+                                                    <span class="dash-badge" style="padding: 0.1rem 0.4rem; font-size: 0.65rem; background: rgba(245,158,11,0.1); color: var(--amber-400); border: 1px solid rgba(245,158,11,0.3);">⏳ Unverified</span>
                                                 <?php endif; ?>
                                             </div>
 
-                                            <div class="since">Since: <?php echo date(
-                                                "M Y",
-                                                $emp["employee_since"],
-                                            ); ?></div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Since: <?php echo date("M Y", $emp["employee_since"]); ?></div>
                                         </div>
                                     </div>
                                 </a>
 
                                 <?php if ($is_owner && !$emp["is_verified"]): ?>
-                                    <button onclick="verifyEmployee('<?php echo htmlspecialchars(
-                                        $company["id"],
-                                    ); ?>', '<?php echo htmlspecialchars(
-    $emp["user"]["id"],
-); ?>')" style="width: 100%; background: #28a745; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; margin-top: 5px;">
-                                        Verify Employee
+                                    <button onclick="verifyEmployee('<?php echo htmlspecialchars($company["id"]); ?>', '<?php echo htmlspecialchars($emp["user"]["id"]); ?>')" class="dash-btn dash-btn-glass" style="width: 100%; justify-content: center; color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">
+                                        ✓ Verify Employee
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -234,6 +188,10 @@ $is_owner = $data["is_owner"] ?? false;
 
                 if (result.success || result.status === 'success') {
                     btn.textContent = '✓ You work here';
+                    btn.className = 'dash-btn dash-btn-glass';
+                    btn.style.color = 'var(--emerald-400)';
+                    btn.style.borderColor = 'rgba(16,185,129,0.3)';
+                    btn.style.background = 'rgba(16,185,129,0.1)';
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
                     alert('Failed to join: ' + (result.message || 'Unknown error'));
