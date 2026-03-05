@@ -1299,3 +1299,117 @@ pub async fn delete_company(
 
     Ok(Json("Company deleted successfully".to_string()))
 }
+
+pub async fn global_search(
+    State(db): State<Surreal<Db>>,
+    Extension(_claims): Extension<Claims>,
+    Query(params): Query<GlobalSearchQuery>,
+) -> Result<Json<GlobalSearchResponse>, StatusCode> {
+    let mut response = GlobalSearchResponse {
+        users: vec![],
+        jobs: vec![],
+        companies: vec![],
+    };
+
+    let q = params.q.unwrap_or_default().to_lowercase();
+    let cat = params.category.unwrap_or_else(|| "all".to_string());
+
+    // --- SEARCH USERS ---
+    if cat == "all" || cat == "users" {
+        let mut sql = "SELECT * FROM User WHERE 1=1".to_string();
+        if !q.is_empty() {
+            sql.push_str(" AND (string::lowercase(name) CONTAINS $q OR string::lowercase(email) CONTAINS $q)");
+        }
+        if let Some(finding) = params.is_finding_job {
+            sql.push_str(&format!(" AND is_finding_job = {}", finding));
+        }
+        sql.push_str(" LIMIT 20");
+
+        let mut res = db
+            .query(&sql)
+            .bind(("q", q.clone()))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let users: Vec<User> = res.take(0).unwrap_or_default();
+        response.users = users.into_iter().map(UserProfile::from).collect();
+    }
+
+    // --- SEARCH JOBS ---
+    if cat == "all" || cat == "jobs" {
+        let mut sql = "SELECT * FROM jobs WHERE 1=1".to_string();
+        if !q.is_empty() {
+            sql.push_str(" AND (string::lowercase(title) CONTAINS $q OR string::lowercase(description) CONTAINS $q OR string::lowercase(company_name) CONTAINS $q)");
+        }
+        if let Some(ref loc) = params.location {
+            if !loc.is_empty() {
+                sql.push_str(" AND string::lowercase(location) CONTAINS string::lowercase($loc)");
+            }
+        }
+        sql.push_str(" ORDER BY datetime_created DESC LIMIT 20");
+
+        let mut res = db
+            .query(&sql)
+            .bind(("q", q.clone()))
+            .bind(("loc", params.location.clone().unwrap_or_default()))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let jobs: Vec<Job> = res.take(0).unwrap_or_default();
+        for job in jobs {
+            let mut name_res = db
+                .query("SELECT VALUE name FROM $eid")
+                .bind(("eid", job.employer_id.clone()))
+                .await
+                .unwrap();
+            let emp_name: Option<String> = name_res.take(0).unwrap_or_default();
+
+            response.jobs.push(JobsData {
+                id: job.id.unwrap().to_string(),
+                employer_name: emp_name.unwrap_or_default(),
+                employer_id: job.employer_id.to_string(),
+                title: job.title,
+                company_name: job.company_name,
+                company_id: job.company_id.map(|id| id.to_string()),
+                min_experience: job.min_experience,
+                description: job.description,
+                skills_required: job.skills_required,
+                majors_accepted: job.majors_accepted,
+                location: job.location,
+                is_active: job.is_active,
+                salary_range_start: job.salary_range_start,
+                salary_range_end: job.salary_range_end,
+                datetime_created: job.datetime_created,
+                datetime_due: job.datetime_due,
+                min_ed_lvl: EduLevel::try_from(job.min_ed_lvl).unwrap_or(EduLevel::Bachelors),
+                has_applied: None,
+                photos: job.photos,
+            });
+        }
+    }
+
+    // --- SEARCH COMPANIES ---
+    if cat == "all" || cat == "companies" {
+        let mut sql = "SELECT * FROM company WHERE 1=1".to_string();
+        if !q.is_empty() {
+            sql.push_str(" AND (string::lowercase(name) CONTAINS $q OR string::lowercase(description) CONTAINS $q)");
+        }
+        if let Some(ref loc) = params.location {
+            if !loc.is_empty() {
+                sql.push_str(" AND string::lowercase(location) CONTAINS string::lowercase($loc)");
+            }
+        }
+        sql.push_str(" LIMIT 20");
+
+        let mut res = db
+            .query(&sql)
+            .bind(("q", q.clone()))
+            .bind(("loc", params.location.clone().unwrap_or_default()))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let companies: Vec<Company> = res.take(0).unwrap_or_default();
+        response.companies = companies.into_iter().map(CompanyData::from).collect();
+    }
+
+    Ok(Json(response))
+}

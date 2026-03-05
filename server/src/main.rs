@@ -17,8 +17,6 @@ use tower_http::cors::{Any, CorsLayer};
 
 /*
 TODO:
-Implement search
-Implement Filters
 Implement Chat System
 Implement Agentic features + AI based job finding
 */
@@ -68,6 +66,7 @@ async fn main() {
             post(update_application_status),
         )
         .route("/my-applications", get(get_my_applications))
+        .route("/global-search", get(global_search))
         .route_layer(middleware::from_fn(auth_middleware));
 
     // Combine them

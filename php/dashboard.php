@@ -49,7 +49,7 @@ if ($apiResult["success"]) {
     </div>
 
     <div class="dash-container">
-        
+
         <header class="dash-header">
             <h1 class="dash-title">
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style="color:var(--indigo-400);filter:drop-shadow(0 0 10px rgba(99,102,241,0.6));">
@@ -58,10 +58,15 @@ if ($apiResult["success"]) {
                 </svg>
                 JobPortal
             </h1>
-            
+
             <div class="dash-nav">
-                <span class="dash-welcome">Welcome, <strong><?php echo htmlspecialchars($userName); ?></strong></span>
-                
+                <form action="search.php" method="GET" style="margin-right: auto; margin-left: 2rem;">
+                        <input type="text" name="q" class="search-header-input" placeholder="Search jobs, companies, users...">
+                    </form>
+                <span class="dash-welcome">Welcome, <strong><?php echo htmlspecialchars(
+                    $userName,
+                ); ?></strong></span>
+
                 <a href="profile.php" class="dash-btn dash-btn-glass">👤 Profile</a>
 
                 <?php if (!$userProfile["is_finding_job"]): ?>
@@ -92,22 +97,35 @@ if ($apiResult["success"]) {
                 </div>
             <?php else: ?>
                 <div class="dash-grid">
-                    
+
                     <?php if ($dashboardMode === "jobs"): ?>
                         <?php foreach ($dashboardData as $job): ?>
-                            <div class="dash-card dash-card-job" onclick="window.location.href='job_details.php?id=<?php echo urlencode($job["id"]); ?>'">
-                                <h3 class="card-title"><?php echo htmlspecialchars($job["title"]); ?></h3>
+                            <div class="dash-card dash-card-job" onclick="window.location.href='job_details.php?id=<?php echo urlencode(
+                                $job["id"],
+                            ); ?>'">
+                                <h3 class="card-title"><?php echo htmlspecialchars(
+                                    $job["title"],
+                                ); ?></h3>
                                 <div class="card-subtitle">
-                                    🏢 <?php echo htmlspecialchars($job["company_name"] ?: $job["employer_name"]); ?>
+                                    🏢 <?php echo htmlspecialchars(
+                                        $job["company_name"] ?:
+                                        $job["employer_name"],
+                                    ); ?>
                                 </div>
 
                                 <div class="card-tags">
                                     <?php if (!empty($job["location"])): ?>
-                                        <span class="dash-badge badge-location">📍 <?php echo htmlspecialchars($job["location"]); ?></span>
+                                        <span class="dash-badge badge-location">📍 <?php echo htmlspecialchars(
+                                            $job["location"],
+                                        ); ?></span>
                                     <?php endif; ?>
-                                    
-                                    <?php if (isset($job["salary_range_start"])): ?>
-                                        <span class="dash-badge badge-salary">💰 $<?php echo number_format($job["salary_range_start"]); ?>+</span>
+
+                                    <?php if (
+                                        isset($job["salary_range_start"])
+                                    ): ?>
+                                        <span class="dash-badge badge-salary">💰 $<?php echo number_format(
+                                            $job["salary_range_start"],
+                                        ); ?>+</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -119,54 +137,90 @@ if ($apiResult["success"]) {
                                 <span class="dash-badge badge-role">Job Seeker</span>
 
                                 <div class="candidate-header">
-                                    <?php if (!empty($candidate["profile_picture"])): ?>
-                                        <img src="<?php echo htmlspecialchars($candidate["profile_picture"]); ?>" class="candidate-avatar" alt="Avatar">
+                                    <?php if (
+                                        !empty($candidate["profile_picture"])
+                                    ): ?>
+                                        <img src="<?php echo htmlspecialchars(
+                                            $candidate["profile_picture"],
+                                        ); ?>" class="candidate-avatar" alt="Avatar">
                                     <?php else: ?>
                                         <div class="candidate-avatar">👤</div>
                                     <?php endif; ?>
 
                                     <div>
                                         <h3 class="card-title">
-                                            <a href="user_details.php?id=<?php echo urlencode($candidate["id"]); ?>">
-                                                <?php echo htmlspecialchars($candidate["name"]); ?>
+                                            <a href="user_details.php?id=<?php echo urlencode(
+                                                $candidate["id"],
+                                            ); ?>">
+                                                <?php echo htmlspecialchars(
+                                                    $candidate["name"],
+                                                ); ?>
                                             </a>
                                         </h3>
-                                        <span class="candidate-email">📧 <?php echo htmlspecialchars($candidate["email"]); ?></span>
+                                        <span class="candidate-email">📧 <?php echo htmlspecialchars(
+                                            $candidate["email"],
+                                        ); ?></span>
                                     </div>
                                 </div>
 
-                                <?php $workAt = $candidate["working_at"] ?? []; ?>
+                                <?php $workAt =
+                                    $candidate["working_at"] ?? []; ?>
                                 <?php if (!empty($workAt)): ?>
                                     <?php foreach ($workAt as $comp): ?>
                                         <div class="candidate-block" style="border-left-color: var(--emerald-400);">
                                             <span class="candidate-block-title">🏢 Affiliation</span>
                                             <span class="candidate-block-value">
-                                                <strong><?php echo htmlspecialchars($comp["designation"]); ?></strong> at 
-                                                <a href="company.php?id=<?php echo urlencode($comp["company_id"]); ?>"><?php echo htmlspecialchars($comp["company_name"]); ?></a>
-                                                <?php if ($comp["is_verified"]): ?>
+                                                <strong><?php echo htmlspecialchars(
+                                                    $comp["designation"],
+                                                ); ?></strong> at
+                                                <a href="company.php?id=<?php echo urlencode(
+                                                    $comp["company_id"],
+                                                ); ?>"><?php echo htmlspecialchars(
+    $comp["company_name"],
+); ?></a>
+                                                <?php if (
+                                                    $comp["is_verified"]
+                                                ): ?>
                                                     <span class="candidate-verified">✓ Verified</span>
                                                 <?php endif; ?>
                                             </span>
                                         </div>
                                     <?php endforeach; ?>
-                                <?php elseif (!empty($candidate["current_work"])): ?>
+                                <?php elseif (
+                                    !empty($candidate["current_work"])
+                                ): ?>
                                     <div class="candidate-block">
                                         <span class="candidate-block-title">💼 Current Role</span>
                                         <span class="candidate-block-value">
-                                            <?php echo htmlspecialchars($candidate["current_work"]["worked_as"]); ?> at 
-                                            <strong><?php echo htmlspecialchars($candidate["current_work"]["company"]); ?></strong>
+                                            <?php echo htmlspecialchars(
+                                                $candidate["current_work"][
+                                                    "worked_as"
+                                                ],
+                                            ); ?> at
+                                            <strong><?php echo htmlspecialchars(
+                                                $candidate["current_work"][
+                                                    "company"
+                                                ],
+                                            ); ?></strong>
                                         </span>
                                     </div>
                                 <?php endif; ?>
 
                                 <?php if (!empty($candidate["about_user"])): ?>
-                                    <p class="candidate-about">"<?php echo htmlspecialchars($candidate["about_user"]); ?>"</p>
+                                    <p class="candidate-about">"<?php echo htmlspecialchars(
+                                        $candidate["about_user"],
+                                    ); ?>"</p>
                                 <?php endif; ?>
 
                                 <?php if (!empty($candidate["skills"])): ?>
                                     <div class="card-tags">
-                                        <?php foreach ($candidate["skills"] as $skill): ?>
-                                            <span class="dash-badge badge-skill"><?php echo htmlspecialchars($skill); ?></span>
+                                        <?php foreach (
+                                            $candidate["skills"]
+                                            as $skill
+                                        ): ?>
+                                            <span class="dash-badge badge-skill"><?php echo htmlspecialchars(
+                                                $skill,
+                                            ); ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php else: ?>
@@ -175,11 +229,17 @@ if ($apiResult["success"]) {
 
                                 <div class="candidate-footer">
                                     <span class="candidate-edu">
-                                        <?php if (!empty($candidate["education"])): ?>
-                                            🎓 <?php echo count($candidate["education"]) . " qualifications"; ?>
+                                        <?php if (
+                                            !empty($candidate["education"])
+                                        ): ?>
+                                            🎓 <?php echo count(
+                                                $candidate["education"],
+                                            ) . " qualifications"; ?>
                                         <?php endif; ?>
                                     </span>
-                                    <a href="mailto:<?php echo htmlspecialchars($candidate["email"]); ?>" class="dash-btn dash-btn-primary" style="padding: 0.4rem 1rem;">Contact</a>
+                                    <a href="mailto:<?php echo htmlspecialchars(
+                                        $candidate["email"],
+                                    ); ?>" class="dash-btn dash-btn-primary" style="padding: 0.4rem 1rem;">Contact</a>
                                 </div>
 
                             </div>

@@ -537,3 +537,18 @@ impl From<UpdateJobRequest> for MergeJobData {
         }
     }
 }
+
+#[derive(Deserialize)]
+pub struct GlobalSearchQuery {
+    pub q: Option<String>,
+    pub category: Option<String>, // "all", "users", "jobs", "companies"
+    pub is_finding_job: Option<bool>,
+    pub location: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct GlobalSearchResponse {
+    pub users: Vec<UserProfile>,
+    pub jobs: Vec<JobsData>,
+    pub companies: Vec<CompanyData>,
+}
