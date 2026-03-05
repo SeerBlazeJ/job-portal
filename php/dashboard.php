@@ -66,7 +66,7 @@ if ($apiResult["success"]) {
                 <span class="dash-welcome">Welcome, <strong><?php echo htmlspecialchars(
                     $userName,
                 ); ?></strong></span>
-
+                <a href="chat.php" class="dash-btn dash-btn-glass">💬 Messages</a>
                 <a href="profile.php" class="dash-btn dash-btn-glass">👤 Profile</a>
 
                 <?php if (!$userProfile["is_finding_job"]): ?>

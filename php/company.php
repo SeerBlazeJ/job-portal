@@ -63,7 +63,9 @@ $is_owner = $data["is_owner"] ?? false;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($company["name"]); ?> — Company Profile</title>
+    <title><?php echo htmlspecialchars(
+        $company["name"],
+    ); ?> — Company Profile</title>
     <link rel="stylesheet" href="./css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,21 +86,60 @@ $is_owner = $data["is_owner"] ?? false;
             <div class="details-header" style="align-items: center;">
                 <div style="display: flex; gap: 1.5rem; align-items:center;">
                     <?php if (!empty($company["logo"])): ?>
-                        <img src="<?php echo htmlspecialchars($company["logo"]); ?>" style="width: 100px; height: 100px; border-radius: var(--r-md); object-fit: contain; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">
+                        <img src="<?php echo htmlspecialchars(
+                            $company["logo"],
+                        ); ?>" style="width: 100px; height: 100px; border-radius: var(--r-md); object-fit: contain; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">
                     <?php else: ?>
                         <div style="width: 100px; height: 100px; border-radius: var(--r-md); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">🏢</div>
                     <?php endif; ?>
 
                     <div>
-                        <h1 class="details-title" style="font-size: 2rem; margin-bottom: 0.4rem;"><?php echo htmlspecialchars($company["name"]); ?></h1>
+                        <h1 class="details-title" style="font-size: 2rem; margin-bottom: 0.4rem;"><?php echo htmlspecialchars(
+                            $company["name"],
+                        ); ?></h1>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem;">
                             <?php if (!empty($company["location"])): ?>
-                                <span>📍 <?php echo htmlspecialchars($company["location"]); ?></span>
+                                <span>📍 <?php echo htmlspecialchars(
+                                    $company["location"],
+                                ); ?></span>
                             <?php endif; ?>
                             <?php if (!empty($company["website"])): ?>
-                                <span>🌐 <a href="<?php echo htmlspecialchars($company["website"]); ?>" target="_blank" style="color:var(--cyan-400); text-decoration:none;"><?php echo htmlspecialchars($company["website"]); ?></a></span>
+                                <span>🌐 <a href="<?php echo htmlspecialchars(
+                                    $company["website"],
+                                ); ?>" target="_blank" style="color:var(--cyan-400); text-decoration:none;"><?php echo htmlspecialchars(
+    $company["website"],
+); ?></a></span>
                             <?php endif; ?>
                         </div>
+                        <script>
+                                                async function startCompanyChat(targetUid, targetName) {
+                                                    const res = await fetch('chat_api.php?action=init', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ target_uid: targetUid })
+                                                    });
+                                                    const data = await res.json();
+                                                    if(data.success) {
+                                                        window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
+                                                    } else {
+                                                        alert('Could not start chat: ' + data.message);
+                                                    }
+                                                }
+                                                </script>
+
+                                                <?php if (
+                                                    isset(
+                                                        $company["created_by"],
+                                                    )
+                                                ): ?>
+                                                    <button onclick="startCompanyChat('<?php echo htmlspecialchars(
+                                                        $company["created_by"],
+                                                    ); ?>', '<?php echo addslashes(
+    htmlspecialchars($company["name"]),
+); ?>')" class="dash-btn dash-btn-glass">
+                                                        💬 Message Employer
+                                                    </button>
+                                                <?php endif; ?>
                     </div>
                 </div>
 
@@ -106,7 +147,9 @@ $is_owner = $data["is_owner"] ?? false;
                     <?php if ($is_employee): ?>
                         <button class="dash-btn dash-btn-glass" disabled style="color: var(--emerald-400); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">✓ You work here</button>
                     <?php else: ?>
-                        <button class="dash-btn dash-btn-primary" id="join-btn" onclick="promptJoin('<?php echo htmlspecialchars($company["id"]); ?>')">🤝 Join Company</button>
+                        <button class="dash-btn dash-btn-primary" id="join-btn" onclick="promptJoin('<?php echo htmlspecialchars(
+                            $company["id"],
+                        ); ?>')">🤝 Join Company</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -115,47 +158,70 @@ $is_owner = $data["is_owner"] ?? false;
                 <div class="profile-section">
                     <h3>🏢 About Us</h3>
                     <div style="background: rgba(99,102,241,0.02); padding: 1.5rem; border-radius: var(--r-md); border: 1px solid rgba(99,102,241,0.08);">
-                        <p style="color: var(--text-main); line-height: 1.6;"><?php echo nl2br(htmlspecialchars($company["description"])); ?></p>
+                        <p style="color: var(--text-main); line-height: 1.6;"><?php echo nl2br(
+                            htmlspecialchars($company["description"]),
+                        ); ?></p>
                     </div>
                 </div>
             <?php endif; ?>
 
             <div class="profile-section">
                 <h3>👥 Our Employees (<?php echo count($employees); ?>)</h3>
-                
+
                 <?php if (empty($employees)): ?>
                     <p class="dash-empty">No employees listed yet.</p>
                 <?php else: ?>
                     <div class="dash-grid">
                         <?php foreach ($employees as $emp): ?>
                             <div class="dash-card">
-                                <a href="user_details.php?id=<?php echo urlencode($emp["user"]["id"]); ?>" style="text-decoration: none; color: inherit; display: block; margin-bottom: 1rem;">
+                                <a href="user_details.php?id=<?php echo urlencode(
+                                    $emp["user"]["id"],
+                                ); ?>" style="text-decoration: none; color: inherit; display: block; margin-bottom: 1rem;">
                                     <div style="display: flex; gap: 1rem; align-items: center;">
-                                        <?php if (!empty($emp["user"]["profile_picture"])): ?>
-                                            <img src="<?php echo htmlspecialchars($emp["user"]["profile_picture"]); ?>" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border: 2px solid rgba(99,102,241,0.3);">
+                                        <?php if (
+                                            !empty(
+                                                $emp["user"]["profile_picture"]
+                                            )
+                                        ): ?>
+                                            <img src="<?php echo htmlspecialchars(
+                                                $emp["user"]["profile_picture"],
+                                            ); ?>" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border: 2px solid rgba(99,102,241,0.3);">
                                         <?php else: ?>
                                             <div style="width:50px; height:50px; border-radius:50%; background:rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">👤</div>
                                         <?php endif; ?>
 
                                         <div>
-                                            <h4 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.2rem;"><?php echo htmlspecialchars($emp["user"]["name"]); ?></h4>
-                                            
+                                            <h4 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.2rem;"><?php echo htmlspecialchars(
+                                                $emp["user"]["name"],
+                                            ); ?></h4>
+
                                             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.3rem;">
-                                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--indigo-400);"><?php echo htmlspecialchars($emp["designation"]); ?></span>
-                                                <?php if ($emp["is_verified"]): ?>
+                                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--indigo-400);"><?php echo htmlspecialchars(
+                                                    $emp["designation"],
+                                                ); ?></span>
+                                                <?php if (
+                                                    $emp["is_verified"]
+                                                ): ?>
                                                     <span class="dash-badge badge-salary" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;">✓ Verified</span>
                                                 <?php else: ?>
                                                     <span class="dash-badge" style="padding: 0.1rem 0.4rem; font-size: 0.65rem; background: rgba(245,158,11,0.1); color: var(--amber-400); border: 1px solid rgba(245,158,11,0.3);">⏳ Unverified</span>
                                                 <?php endif; ?>
                                             </div>
 
-                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Since: <?php echo date("M Y", $emp["employee_since"]); ?></div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Since: <?php echo date(
+                                                "M Y",
+                                                $emp["employee_since"],
+                                            ); ?></div>
                                         </div>
                                     </div>
                                 </a>
 
                                 <?php if ($is_owner && !$emp["is_verified"]): ?>
-                                    <button onclick="verifyEmployee('<?php echo htmlspecialchars($company["id"]); ?>', '<?php echo htmlspecialchars($emp["user"]["id"]); ?>')" class="dash-btn dash-btn-glass" style="width: 100%; justify-content: center; color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">
+                                    <button onclick="verifyEmployee('<?php echo htmlspecialchars(
+                                        $company["id"],
+                                    ); ?>', '<?php echo htmlspecialchars(
+    $emp["user"]["id"],
+); ?>')" class="dash-btn dash-btn-glass" style="width: 100%; justify-content: center; color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">
                                         ✓ Verify Employee
                                     </button>
                                 <?php endif; ?>

@@ -552,3 +552,64 @@ pub struct GlobalSearchResponse {
     pub jobs: Vec<JobsData>,
     pub companies: Vec<CompanyData>,
 }
+
+// ==========================================
+// CHAT STRUCTURES & DTOs
+// ==========================================
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ChatSession {
+    pub id: Option<surrealdb::sql::Thing>,
+    pub participants: Vec<String>, // Array of string UIDs
+    pub last_message: Option<String>,
+    pub updated_at: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ChatMessage {
+    pub id: Option<surrealdb::sql::Thing>,
+    pub session_id: String,
+    pub sender_uid: String,
+    pub content: String,
+    pub file_url: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Deserialize)]
+pub struct InitSessionReq {
+    pub target_uid: String,
+}
+
+#[derive(Serialize)]
+pub struct ChatSessionDTO {
+    pub session_id: String,
+    pub other_user_uid: String,
+    pub other_user_name: String,
+    pub other_user_avatar: Option<String>,
+    pub last_message: Option<String>,
+    pub updated_at: String,
+}
+
+#[derive(Deserialize)]
+pub struct SendMessageReq {
+    pub session_id: String,
+    pub content: String,
+    pub file_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct SafeUserChat {
+    pub name: String,
+    pub profile_picture: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SafeMsgDTO {
+    pub id: Option<String>,
+    pub session_id: Option<String>,
+    pub sender_uid: Option<String>,
+    pub sender_id: Option<String>, // Catches older messages
+    pub content: Option<String>,
+    pub file_url: Option<String>,
+    pub created_at: Option<String>,
+}

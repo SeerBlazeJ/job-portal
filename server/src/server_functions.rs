@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use axum::extract::{Path, Query};
+use axum::response::IntoResponse;
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -16,6 +17,9 @@ use surrealdb::{RecordId, Surreal};
 
 use crate::data_structures::*;
 use crate::helper_functions::*;
+use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
+use futures::{sink::SinkExt, stream::StreamExt};
+use tokio::sync::mpsc;
 
 pub async fn get_profile(
     State(db): State<Surreal<Db>>,
@@ -1412,4 +1416,275 @@ pub async fn global_search(
     }
 
     Ok(Json(response))
+}
+// ==========================================
+// WEBSOCKET HANDLERS
+// ==========================================
+
+#[derive(serde::Deserialize)]
+pub struct WsAuth {
+    pub token: String,
+}
+
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WsAuth>,
+    Extension(active_users): Extension<crate::ActiveUsers>,
+) -> axum::response::Response {
+    let secret = "ThisIsTheSecretKeyForTheApp"; // Replace with your actual secret
+    let claims = match jsonwebtoken::decode::<Claims>(
+        &query.token,
+        &jsonwebtoken::DecodingKey::from_secret(secret.as_ref()),
+        &jsonwebtoken::Validation::default(),
+    ) {
+        Ok(c) => c.claims,
+        Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
+    };
+
+    ws.on_upgrade(move |socket| handle_socket(socket, claims.uid, active_users))
+}
+
+async fn handle_socket(socket: WebSocket, uid: String, active_users: crate::ActiveUsers) {
+    let (mut sender, mut receiver) = socket.split();
+    let (tx, mut rx) = mpsc::unbounded_channel();
+
+    active_users.write().await.insert(uid.clone(), tx);
+
+    let mut send_task = tokio::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            if sender.send(WsMessage::Text(msg.into())).await.is_err() {
+                break;
+            }
+        }
+    });
+
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(_)) = receiver.next().await { /* Ignore incoming raw WS data, we use REST for sending */
+        }
+    });
+
+    tokio::select! {
+        _ = (&mut send_task) => recv_task.abort(),
+        _ = (&mut recv_task) => send_task.abort(),
+    };
+
+    active_users.write().await.remove(&uid);
+}
+
+// ==========================================
+// REST CHAT API
+// ==========================================
+pub async fn init_chat_session(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(req): Json<InitSessionReq>,
+) -> Result<Json<String>, StatusCode> {
+    let my_uid = claims.uid;
+    let mut target_uid = req.target_uid.clone();
+
+    // FIX: Safely and universally resolve the target UID.
+    // If the frontend passed a RecordId (User:xxxx) instead of a uid, this corrects it instantly.
+    if let Ok(mut res) = db
+        .query(
+            "SELECT VALUE uid FROM User WHERE uid = $target OR type::string(id) = $target LIMIT 1",
+        )
+        .bind(("target", target_uid.clone()))
+        .await
+    {
+        let resolved_uid: Option<String> = res.take(0).unwrap_or_default();
+        if let Some(r_uid) = resolved_uid {
+            target_uid = r_uid;
+        }
+    }
+
+    if my_uid == target_uid {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Check if session exists
+    let mut res = db.query("SELECT * FROM chat_session WHERE participants CONTAINS $my_uid AND participants CONTAINS $target_uid")
+        .bind(("my_uid", my_uid.clone()))
+        .bind(("target_uid", target_uid.clone()))
+        .await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let existing: Vec<ChatSession> = res.take(0).unwrap_or_default();
+    if let Some(session) = existing.first() {
+        if let Some(id) = &session.id {
+            return Ok(Json(id.to_string()));
+        }
+    }
+
+    // Create new session
+    let new_session = ChatSession {
+        id: None,
+        participants: vec![my_uid, target_uid],
+        last_message: None,
+        updated_at: chrono::Utc::now().to_rfc3339(),
+    };
+
+    let created: Option<ChatSession> = db
+        .create("chat_session")
+        .content(new_session)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if let Some(c) = created {
+        if let Some(id) = c.id {
+            return Ok(Json(id.to_string()));
+        }
+    }
+    Err(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+pub async fn get_chat_sessions(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<ChatSessionDTO>>, StatusCode> {
+    let my_uid = claims.uid;
+
+    let mut res = db.query("SELECT * FROM chat_session WHERE participants CONTAINS $my_uid ORDER BY updated_at DESC")
+        .bind(("my_uid", my_uid.clone()))
+        .await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let sessions: Vec<ChatSession> = res.take(0).unwrap_or_default();
+    let mut dtos = Vec::new();
+
+    for session in sessions {
+        let other_uid = session
+            .participants
+            .iter()
+            .find(|&id| id != &my_uid)
+            .cloned()
+            .unwrap_or_default();
+
+        if other_uid.is_empty() {
+            continue;
+        }
+
+        // FIX: Search by both UID and RecordID. This guarantees the Name and Avatar map perfectly!
+        if let Ok(mut u_res) = db
+            .query("SELECT name, profile_picture FROM User WHERE uid = $uid OR type::string(id) = $uid LIMIT 1")
+            .bind(("uid", other_uid.clone()))
+            .await
+        {
+            let user_data: Option<SafeUserChat> = u_res.take(0).unwrap_or_default();
+
+            if let Some(user) = user_data {
+                if let Some(id) = &session.id {
+                    dtos.push(ChatSessionDTO {
+                        session_id: id.to_string(),
+                        other_user_uid: other_uid,
+                        other_user_name: user.name,
+                        other_user_avatar: user.profile_picture,
+                        last_message: session.last_message.clone(),
+                        updated_at: session.updated_at.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(Json(dtos))
+}
+
+pub async fn send_message(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Extension(active_users): Extension<crate::ActiveUsers>,
+    Json(req): Json<SendMessageReq>,
+) -> Result<StatusCode, StatusCode> {
+    let msg = ChatMessage {
+        id: None,
+        session_id: req.session_id.clone(),
+        sender_uid: claims.uid,
+        content: req.content.clone(),
+        file_url: req.file_url,
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+
+    let saved_msg_res: Option<ChatMessage> = db
+        .create("chat_message")
+        .content(msg)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if let Some(saved_msg) = saved_msg_res {
+        if let Ok(s_rid) = RecordId::from_str(&req.session_id) {
+            let session: Option<ChatSession> = db.select(s_rid.clone()).await.unwrap_or_default();
+
+            if let Some(sess) = session {
+                let now_str = chrono::Utc::now().to_rfc3339();
+                let _ = db
+                    .query("UPDATE $sid SET updated_at = $now, last_message = $msg")
+                    .bind(("sid", s_rid))
+                    .bind(("now", now_str))
+                    .bind(("msg", req.content))
+                    .await;
+
+                if let Ok(payload) = serde_json::to_string(&saved_msg) {
+                    let active = active_users.read().await;
+                    for participant in sess.participants {
+                        if let Some(tx) = active.get(&participant) {
+                            let _ = tx.send(payload.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(StatusCode::OK)
+}
+pub async fn get_chat_messages(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Path(session_id): Path<String>,
+) -> Result<Json<Vec<SafeMsgDTO>>, StatusCode> {
+    // 1. Loosely verify authorization so it doesn't crash on strict Struct mapping
+    let mut auth_res = db
+        .query("SELECT participants FROM type::thing($sid)")
+        .bind(("sid", session_id.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let auth_val: Option<serde_json::Value> = auth_res.take(0).unwrap_or_default();
+    if let Some(val) = auth_val {
+        let mut authorized = false;
+        if let Some(arr) = val.get("participants").and_then(|p| p.as_array()) {
+            for p in arr {
+                if p.as_str() == Some(&claims.uid) {
+                    authorized = true;
+                    break;
+                }
+            }
+        }
+        if !authorized {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    // 2. Fetch messages casting complex DB objects (like ID/datetime) safely to strings
+    let mut m_res = db
+        .query(
+            "SELECT \
+            type::string(id) AS id, \
+            type::string(session_id) AS session_id, \
+            sender_uid, \
+            sender_id, \
+            content, \
+            file_url, \
+            type::string(created_at) AS created_at \
+         FROM chat_message \
+         WHERE session_id = $sid OR type::string(session_id) = $sid \
+         ORDER BY created_at ASC",
+        )
+        .bind(("sid", session_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Because all fields are `Option<>`, this will never fail or drop data!
+    let messages: Vec<SafeMsgDTO> = m_res.take(0).unwrap_or_default();
+    Ok(Json(messages))
 }
