@@ -42,10 +42,37 @@ session_write_close();
         .msg-them { background: rgba(255,255,255,0.05); align-self: flex-start; border-bottom-left-radius: 0.2rem; color: white; }
         .msg-me { background: var(--indigo-500); align-self: flex-end; border-bottom-right-radius: 0.2rem; color: white; }
 
-        .dm-input-area { padding: 1rem; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 0.5rem; align-items: center; }
+        /* Input Area & Attachment Preview Styles */
+        .dm-input-area { padding: 1rem; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 0.8rem; }
         .dm-search-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.6rem 1rem; border-radius: var(--r-full); color: white; outline: none; font-size: 0.9rem; }
-        .dm-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.8rem 1rem; border-radius: var(--r-full); color: white; outline: none; }
+        .dm-input-wrapper { display: flex; gap: 0.5rem; align-items: center; width: 100%; }
+        .dm-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.8rem 1rem; border-radius: var(--r-full); color: white; outline: none; transition: border-color 0.3s; }
+        .dm-input:focus { border-color: var(--indigo-400); }
         .dm-btn { background: none; border: none; color: var(--indigo-400); font-weight: bold; cursor: pointer; padding: 0 1rem; }
+        .dm-btn:disabled { color: gray; cursor: not-allowed; }
+
+        /* New Preview Card */
+        .file-preview-card {
+            display: none; /* Hidden by default */
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem 1rem;
+            background: rgba(99,102,241,0.15);
+            border: 1px solid rgba(99,102,241,0.3);
+            border-radius: var(--r-md);
+            width: fit-content;
+            max-width: 100%;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .file-preview-card.active { display: flex; }
+        .file-preview-name { color: white; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+        .file-preview-close { background: rgba(244,63,94,0.2); color: #f43f5e; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
+        .file-preview-close:hover { background: #f43f5e; color: white; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -65,11 +92,22 @@ session_write_close();
             <div id="chat-window" class="dm-main" style="display: none;">
                 <div class="dm-header" id="chat-title" style="margin-bottom: 0; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; color: white;">Chat</div>
                 <div id="messages-area" class="dm-messages"></div>
-                <form id="chat-form" class="dm-input-area">
-                    <label style="cursor: pointer;">📎 <input type="file" id="chat-file" style="display: none;"></label>
-                    <input type="text" id="chat-input" class="dm-input" placeholder="Type a message..." autocomplete="off">
-                    <button type="submit" class="dm-btn">Send</button>
-                </form>
+
+                <div class="dm-input-area">
+                    <div id="file-preview-card" class="file-preview-card">
+                        <span>📎</span>
+                        <span id="file-preview-name" class="file-preview-name">filename.png</span>
+                        <button type="button" id="file-preview-close" class="file-preview-close" title="Remove attachment">✕</button>
+                    </div>
+
+                    <form id="chat-form" class="dm-input-wrapper">
+                        <label style="cursor: pointer; font-size: 1.2rem; padding: 0.5rem; opacity: 0.8; transition: 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                            📎 <input type="file" id="chat-file" style="display: none;">
+                        </label>
+                        <input type="text" id="chat-input" class="dm-input" placeholder="Type a message..." autocomplete="off">
+                        <button type="submit" id="chat-submit-btn" class="dm-btn">Send</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -78,7 +116,30 @@ session_write_close();
         const myUid = "<?php echo htmlspecialchars($my_uid); ?>";
         const jwtToken = "<?php echo htmlspecialchars($jwtToken); ?>";
         let activeSession = "<?php echo htmlspecialchars($active_session); ?>";
-        let allSessions = []; // Store all sessions globally for searching
+        let allSessions = [];
+
+        // DOM Elements for File Preview
+        const fileInput = document.getElementById('chat-file');
+        const filePreviewCard = document.getElementById('file-preview-card');
+        const filePreviewName = document.getElementById('file-preview-name');
+        const filePreviewClose = document.getElementById('file-preview-close');
+
+        // Show File Preview when a file is selected
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                filePreviewName.innerText = this.files[0].name;
+                filePreviewCard.classList.add('active');
+                document.getElementById('chat-input').focus();
+            } else {
+                filePreviewCard.classList.remove('active');
+            }
+        });
+
+        // Remove attachment when "X" is clicked
+        filePreviewClose.addEventListener('click', function() {
+            fileInput.value = ''; // Clear the file
+            filePreviewCard.classList.remove('active'); // Hide preview
+        });
 
         const ws = new WebSocket('ws://localhost:3000/ws?token=' + jwtToken);
         ws.onmessage = (e) => {
@@ -97,7 +158,6 @@ session_write_close();
             renderSessions();
         }
 
-        // Handles rendering AND filtering the chat list
         function renderSessions() {
             const searchQuery = document.getElementById('chat-search').value.toLowerCase();
             const filteredSessions = allSessions.filter(s => s.other_user_name.toLowerCase().includes(searchQuery));
@@ -121,7 +181,6 @@ session_write_close();
             document.getElementById('sessions-list').innerHTML = html;
         }
 
-        // Listen for typing in the search bar
         document.getElementById('chat-search').addEventListener('input', renderSessions);
 
         async function openSession(id, name) {
@@ -142,7 +201,6 @@ session_write_close();
         }
 
         function appendMessage(m) {
-            // FIX: Guaranteed matching! Strips all spaces and checks both possible JSON keys.
             const sender = String(m.sender_uid || m.sender_id || "").trim();
             const me = String(myUid).trim();
 
@@ -150,7 +208,7 @@ session_write_close();
             const cls = isMe ? 'msg-me' : 'msg-them';
 
             let content = escapeHtml(m.content);
-            if(m.file_url) content += `<br><a href="${m.file_url}" target="_blank" style="color:inherit; text-decoration:underline; font-size: 0.85rem;">📎 View Attachment</a>`;
+            if(m.file_url) content += `<br><a href="${m.file_url}" target="_blank" style="color:inherit; text-decoration:none; display:inline-block; margin-top:0.5rem; padding:0.4rem 0.8rem; background:rgba(0,0,0,0.2); border-radius:var(--r-md); border:1px solid rgba(255,255,255,0.1);">📎 View Attachment</a>`;
 
             document.getElementById('messages-area').innerHTML += `<div class="msg ${cls}">${content}</div>`;
         }
@@ -161,26 +219,40 @@ session_write_close();
         document.getElementById('chat-form').onsubmit = async (e) => {
             e.preventDefault();
             const input = document.getElementById('chat-input');
-            const file = document.getElementById('chat-file');
-            if(!activeSession || (!input.value.trim() && !file.files[0])) return;
+            const submitBtn = document.getElementById('chat-submit-btn');
+
+            if(!activeSession || (!input.value.trim() && !fileInput.files[0])) return;
 
             const fd = new FormData();
             fd.append('session_id', activeSession);
             fd.append('content', input.value.trim());
-            if(file.files[0]) fd.append('attachment', file.files[0]);
+            if(fileInput.files[0]) fd.append('attachment', fileInput.files[0]);
 
-            input.value = ''; file.value = '';
-            await fetch('chat_api.php?action=send', { method: 'POST', body: fd });
+            // Optimistic UI updates
+            input.value = '';
+            submitBtn.disabled = true;
+            submitBtn.innerText = '...';
+
+            try {
+                await fetch('chat_api.php?action=send', { method: 'POST', body: fd });
+            } catch(e) {
+                console.error(e);
+                alert("Failed to send message.");
+            } finally {
+                // Reset file UI after send attempt is complete
+                fileInput.value = '';
+                filePreviewCard.classList.remove('active');
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Send';
+            }
         };
 
         // Initialize App
         const urlParams = new URLSearchParams(window.location.search);
-                const nameFromUrl = urlParams.get('name') || "Chat"; // Instantly gets the name from the profile button
+        const nameFromUrl = urlParams.get('name') || "Chat";
 
-                loadSessions();
-                if(activeSession) {
-                    openSession(activeSession, nameFromUrl);
-                }
+        loadSessions();
+        if(activeSession) openSession(activeSession, nameFromUrl);
     </script>
 </body>
 </html>
