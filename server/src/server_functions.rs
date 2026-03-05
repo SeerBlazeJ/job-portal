@@ -42,6 +42,17 @@ pub async fn signup(
     State(db): State<Surreal<Db>>,
     Json(data): Json<SignupData>,
 ) -> Result<Json<String>, StatusCode> {
+    let existing_users: Vec<User> = db
+        .query("SELECT * FROM User WHERE uid = $uid")
+        .bind(("uid", data.uid.clone()))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .take(0)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if !existing_users.is_empty() {
+        return Err(StatusCode::CONFLICT); // 409 Conflict
+    }
     let password_hash = hash_pword(&data.pword).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let user = User {
         id: None,

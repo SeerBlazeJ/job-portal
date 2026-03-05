@@ -2,6 +2,8 @@ mod data_structures;
 mod helper_functions;
 mod server_functions;
 use server_functions::*;
+#[cfg(test)]
+mod test;
 
 use axum::{
     Router,
