@@ -47,16 +47,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             : null,
     ];
 
-    if (!empty($_POST["skills_required"])) {
-        $jobData["skills_required"] = json_decode(
-            $_POST["skills_required"],
-            true,
+    // FIX: Properly split comma-separated strings into arrays
+    $skills_raw = $_POST["skills_required"] ?? "";
+    if (!empty(trim($skills_raw))) {
+        $jobData["skills_required"] = array_values(
+            array_filter(array_map("trim", explode(",", $skills_raw))),
         );
     }
-    if (!empty($_POST["majors_accepted"])) {
-        $jobData["majors_accepted"] = json_decode(
-            $_POST["majors_accepted"],
-            true,
+
+    $majors_raw = $_POST["majors_accepted"] ?? "";
+    if (!empty(trim($majors_raw))) {
+        $jobData["majors_accepted"] = array_values(
+            array_filter(array_map("trim", explode(",", $majors_raw))),
         );
     }
 
@@ -144,7 +146,7 @@ $verifiedCompanies = array_filter($companies, function ($c) {
     </div>
 
     <div class="dash-container">
-        
+
         <header class="dash-header">
             <h1 class="dash-title">📝 Create Job Post</h1>
             <div class="dash-nav">
@@ -156,7 +158,7 @@ $verifiedCompanies = array_filter($companies, function ($c) {
             <div id="alert" class="profile-alert"></div>
 
             <form id="job-form" enctype="multipart/form-data">
-                
+
                 <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label class="form-label">Job Photos</label>
                     <input type="file" id="photos" name="photos[]" accept="image/*" multiple class="form-input">
@@ -181,14 +183,20 @@ $verifiedCompanies = array_filter($companies, function ($c) {
                             <select id="company_select" class="form-input" required style="padding-left: 1rem;">
                                 <option value="">-- Select Company --</option>
                                 <?php foreach ($verifiedCompanies as $comp): ?>
-                                    <option value="<?php echo htmlspecialchars($comp["company_id"]); ?>" data-name="<?php echo htmlspecialchars($comp["company_name"]); ?>">
-                                        <?php echo htmlspecialchars($comp["company_name"]); ?>
+                                    <option value="<?php echo htmlspecialchars(
+                                        $comp["company_id"],
+                                    ); ?>" data-name="<?php echo htmlspecialchars(
+    $comp["company_name"],
+); ?>">
+                                        <?php echo htmlspecialchars(
+                                            $comp["company_name"],
+                                        ); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
                     </div>
-                    
+
                     <div class="form-group">
                         <label class="form-label">Minimum Experience</label>
                         <div style="display: flex; gap: 1rem;">
@@ -201,6 +209,17 @@ $verifiedCompanies = array_filter($companies, function ($c) {
                 <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label class="form-label">Job Description *</label>
                     <textarea id="description" class="form-input" required placeholder="Describe the role, responsibilities, and perks..."></textarea>
+                </div>
+
+                <div class="form-grid-2" style="margin-bottom: 1.25rem;">
+                    <div class="form-group">
+                        <label class="form-label">Skills Required (Comma separated)</label>
+                        <input type="text" id="skills_required" class="form-input" placeholder="e.g. Rust, Python, React" style="padding-left: 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Majors Accepted (Comma separated)</label>
+                        <input type="text" id="majors_accepted" class="form-input" placeholder="e.g. Computer Science, IT" style="padding-left: 1rem;">
+                    </div>
                 </div>
 
                 <div class="form-grid-2">
@@ -237,7 +256,11 @@ $verifiedCompanies = array_filter($companies, function ($c) {
                     <input type="datetime-local" id="datetime_due" class="form-input" required style="padding-left: 1rem;">
                 </div>
 
-                <button type="submit" class="dash-btn dash-btn-primary" id="submit-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;" <?php echo empty($verifiedCompanies) ? "disabled" : ""; ?>>
+                <button type="submit" class="dash-btn dash-btn-primary" id="submit-btn" style="width: 100%; justify-content: center; font-size: 1rem; padding: 1rem;" <?php echo empty(
+                    $verifiedCompanies
+                )
+                    ? "disabled"
+                    : ""; ?>>
                     🚀 Create Job Post
                 </button>
             </form>
@@ -265,6 +288,11 @@ $verifiedCompanies = array_filter($companies, function ($c) {
             }
 
             formData.append('description', document.getElementById('description').value.trim());
+
+            // Append the new skills and majors fields
+            formData.append('skills_required', document.getElementById('skills_required').value.trim());
+            formData.append('majors_accepted', document.getElementById('majors_accepted').value.trim());
+
             formData.append('location', document.getElementById('location').value.trim());
             formData.append('min_ed_lvl', document.getElementById('min_ed_lvl').value);
 

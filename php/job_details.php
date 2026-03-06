@@ -72,26 +72,42 @@ function formatExp($months)
         <div class="profile-wrapper">
             <div class="details-header">
                 <div>
-                    <h1 class="details-title"><?php echo htmlspecialchars($job["title"]); ?></h1>
+                    <h1 class="details-title"><?php echo htmlspecialchars(
+                        $job["title"],
+                    ); ?></h1>
                     <div style="font-size: 1.1rem; margin-bottom: 1rem;">
                         🏢
                         <?php if (!empty($job["company_id"])): ?>
-                            <a href="company.php?id=<?php echo urlencode($job["company_id"]); ?>" style="color: var(--cyan-400); font-weight: bold; text-decoration: none;">
-                                <?php echo htmlspecialchars($job["company_name"]); ?>
+                            <a href="company.php?id=<?php echo urlencode(
+                                $job["company_id"],
+                            ); ?>" style="color: var(--cyan-400); font-weight: bold; text-decoration: none;">
+                                <?php echo htmlspecialchars(
+                                    $job["company_name"],
+                                ); ?>
                             </a>
                         <?php else: ?>
-                            <strong style="color: var(--text-primary);"><?php echo htmlspecialchars($job["company_name"] ?: $job["employer_name"]); ?></strong>
+                            <strong style="color: var(--text-primary);"><?php echo htmlspecialchars(
+                                $job["company_name"] ?: $job["employer_name"],
+                            ); ?></strong>
                         <?php endif; ?>
                     </div>
 
                     <div class="card-tags">
                         <?php if (!empty($job["location"])): ?>
-                            <span class="dash-badge badge-location">📍 <?php echo htmlspecialchars($job["location"]); ?></span>
+                            <span class="dash-badge badge-location">📍 <?php echo htmlspecialchars(
+                                $job["location"],
+                            ); ?></span>
                         <?php endif; ?>
                         <?php if (isset($job["salary_range_start"])): ?>
-                            <span class="dash-badge badge-salary">💰 $<?php echo number_format($job["salary_range_start"]); ?> - $<?php echo number_format($job["salary_range_end"]); ?></span>
+                            <span class="dash-badge badge-salary">💰 $<?php echo number_format(
+                                $job["salary_range_start"],
+                            ); ?> - $<?php echo number_format(
+     $job["salary_range_end"],
+ ); ?></span>
                         <?php endif; ?>
-                        <span class="dash-badge badge-role">🎓 Min. Education: <?php echo htmlspecialchars($job["min_ed_lvl"]); ?></span>
+                        <span class="dash-badge badge-role">🎓 Min. Education: <?php echo htmlspecialchars(
+                            $job["min_ed_lvl"],
+                        ); ?></span>
                     </div>
                 </div>
 
@@ -100,7 +116,11 @@ function formatExp($months)
                         <?php if ($hasApplied): ?>
                             <button class="dash-btn dash-btn-glass" disabled style="color: var(--emerald-400); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">✓ Application Submitted</button>
                         <?php else: ?>
-                            <button class="dash-btn dash-btn-primary" id="apply-btn" onclick="applyForJob('<?php echo htmlspecialchars($job["id"]); ?>', '<?php echo htmlspecialchars($job["employer_id"]); ?>')">🚀 Apply Now</button>
+                            <button class="dash-btn dash-btn-primary" id="apply-btn" onclick="applyForJob('<?php echo htmlspecialchars(
+                                $job["id"],
+                            ); ?>', '<?php echo htmlspecialchars(
+    $job["employer_id"],
+); ?>')">🚀 Apply Now</button>
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
@@ -109,7 +129,9 @@ function formatExp($months)
             <div class="profile-section">
                 <h3>📝 About the Role</h3>
                 <div style="background: rgba(99,102,241,0.02); padding: 1.5rem; border-radius: var(--r-md); border: 1px solid rgba(99,102,241,0.08);">
-                    <p style="color: var(--text-main); line-height: 1.7; white-space: pre-wrap;"><?php echo htmlspecialchars($job["description"]); ?></p>
+                    <p style="color: var(--text-main); line-height: 1.7; white-space: pre-wrap;"><?php echo htmlspecialchars(
+                        $job["description"],
+                    ); ?></p>
                 </div>
             </div>
 
@@ -117,14 +139,35 @@ function formatExp($months)
                 <h3>⚙️ Requirements</h3>
                 <div class="dynamic-list-item">
                     <div style="margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-secondary);">
-                        <strong style="color: var(--text-primary);">Minimum Experience:</strong> <?php echo formatExp($job["min_experience"]); ?>
+                        <strong style="color: var(--text-primary);">Minimum Experience:</strong> <?php echo formatExp(
+                            $job["min_experience"],
+                        ); ?>
                     </div>
 
                     <?php if (!empty($job["skills_required"])): ?>
                         <div style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-primary);"><strong>Skills Needed:</strong></div>
+                        <div class="card-tags" style="margin-bottom: 1rem;">
+                            <?php foreach (
+                                $job["skills_required"]
+                                as $skill
+                            ): ?>
+                                <span class="dash-badge badge-skill"><?php echo htmlspecialchars(
+                                    $skill,
+                                ); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($job["majors_accepted"])): ?>
+                        <div style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-primary);"><strong>Majors Accepted:</strong></div>
                         <div class="card-tags">
-                            <?php foreach ($job["skills_required"] as $skill): ?>
-                                <span class="dash-badge badge-skill"><?php echo htmlspecialchars($skill); ?></span>
+                            <?php foreach (
+                                $job["majors_accepted"]
+                                as $major
+                            ): ?>
+                                <span class="dash-badge badge-role" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--emerald-400);"><?php echo htmlspecialchars(
+                                    $major,
+                                ); ?></span>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
@@ -136,8 +179,12 @@ function formatExp($months)
                 <h3>🖼️ Gallery</h3>
                 <div class="job-gallery">
                     <?php foreach ($job["photos"] as $photo): ?>
-                        <a href="<?php echo htmlspecialchars($photo); ?>" target="_blank">
-                            <img src="<?php echo htmlspecialchars($photo); ?>" alt="Job Image">
+                        <a href="<?php echo htmlspecialchars(
+                            $photo,
+                        ); ?>" target="_blank">
+                            <img src="<?php echo htmlspecialchars(
+                                $photo,
+                            ); ?>" alt="Job Image">
                         </a>
                     <?php endforeach; ?>
                 </div>
