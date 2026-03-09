@@ -16,9 +16,6 @@ if (isAuthenticated()) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        
-    </style>
 </head>
 <body>
 
@@ -29,15 +26,8 @@ if (isAuthenticated()) {
     </div>
 
     <div class="auth-container">
-
-        <div class="auth-visual">
-            <div class="auth-floating-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
-            </div>
-
-            <div class="auth-visual-inner">
+        <div class="auth-form-container">
+            <div class="auth-form-wrapper">
 
                 <a href="index.php" class="auth-logo">
                     <svg width="30" height="30" viewBox="0 0 32 32" fill="none" style="color:var(--indigo-400);filter:drop-shadow(0 0 10px rgba(99,102,241,0.6));">
@@ -45,85 +35,6 @@ if (isAuthenticated()) {
                         <path d="M16 16L4 10M16 16V28M16 16L28 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span>JobPortal</span>
-                </a>
-
-                <div class="auth-visual-headline">
-                    <div class="auth-ticker">
-                        <span class="auth-ticker-dot"></span>
-                        312 new roles added in the last hour
-                    </div>
-                    <div class="auth-visual-tag"><span>AI-Powered Matching</span></div>
-                    <h1 class="visual-title">Your next role<br>is waiting.</h1>
-                    <p class="visual-subtitle">Trusted by 500K+ professionals. Land more interviews with AI-matched opportunities tailored to your experience.</p>
-
-                    <div class="auth-stats">
-                        <div class="auth-stat">
-                            <div class="auth-stat-icon" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);">
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white"><path d="M10 2L13 8L19 9L14.5 13.5L15.5 19.5L10 16.5L4.5 19.5L5.5 13.5L1 9L7 8L10 2Z"/></svg>
-                            </div>
-                            <div>
-                                <div class="auth-stat-number" id="stat-jobs">0</div>
-                                <div class="auth-stat-label">Active Openings</div>
-                            </div>
-                        </div>
-                        <div class="auth-stat">
-                            <div class="auth-stat-icon" style="background:linear-gradient(135deg,#10B981,#06B6D4);">
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white"><path d="M10 10C12.21 10 14 8.21 14 6C14 3.79 12.21 2 10 2C7.79 2 6 3.79 6 6C6 8.21 7.79 10 10 10Z"/><path d="M2 18C2 14.69 5.69 12 10 12C14.31 12 18 14.69 18 18" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-                            </div>
-                            <div>
-                                <div class="auth-stat-number" id="stat-companies">0</div>
-                                <div class="auth-stat-label">Hiring Companies</div>
-                            </div>
-                        </div>
-                        <div class="auth-stat">
-                            <div class="auth-stat-icon" style="background:linear-gradient(135deg,#F59E0B,#EF4444);">
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white"><path d="M10 2C7 2 4 4.5 4 8c0 5 6 10 6 10s6-5 6-10c0-3.5-3-6-6-6z"/><circle cx="10" cy="8" r="2" fill="white"/></svg>
-                            </div>
-                            <div>
-                                <div class="auth-stat-number">3×</div>
-                                <div class="auth-stat-label">Faster Interviews</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="auth-job-preview">
-                    <div class="auth-job-preview-title">🔥 Top matches right now</div>
-                    <div class="preview-jobs">
-                        <div class="preview-job">
-                            <div class="preview-job-logo" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);">G</div>
-                            <div class="preview-job-info">
-                                <div class="preview-job-role">Senior UX Designer</div>
-                                <div class="preview-job-meta"><span>Vertex Co.</span><span>·</span><span>Remote</span><span class="new-badge">New</span></div>
-                            </div>
-                            <div class="preview-job-salary">$160k</div>
-                        </div>
-                        <div class="preview-job">
-                            <div class="preview-job-logo" style="background:linear-gradient(135deg,#10B981,#06B6D4);">D</div>
-                            <div class="preview-job-info">
-                                <div class="preview-job-role">ML Engineer</div>
-                                <div class="preview-job-meta"><span>DataFlow</span><span>·</span><span>San Francisco</span></div>
-                            </div>
-                            <div class="preview-job-salary">$185k</div>
-                        </div>
-                        <div class="preview-job">
-                            <div class="preview-job-logo" style="background:linear-gradient(135deg,#F59E0B,#EF4444);">C</div>
-                            <div class="preview-job-info">
-                                <div class="preview-job-role">Product Manager</div>
-                                <div class="preview-job-meta"><span>CloudScale</span><span>·</span><span>Hybrid</span></div>
-                            </div>
-                            <div class="preview-job-salary">$140k</div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div><div class="auth-form-container">
-            <div class="auth-form-wrapper">
-
-                <a href="index.php" class="auth-back">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Back to JobPortal
                 </a>
 
                 <div class="auth-header">
@@ -177,17 +88,8 @@ if (isAuthenticated()) {
                             <div class="btn-spinner"></div>
                         </button>
 
-                        <div class="auth-divider"><span>or continue with</span></div>
-                        <div class="social-auth">
-                            <button type="button" class="social-btn social-btn-google" onclick="handleSocial('Google')">
-                                <svg width="17" height="17" viewBox="0 0 20 20"><path d="M19.6 10.23c0-.82-.1-1.42-.25-2.05H10v3.72h5.5c-.15.96-.74 2.31-2.04 3.22v2.45h3.16c1.89-1.73 2.98-4.3 2.98-7.34z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45c-.89.59-2.01.95-3.46.95-2.64 0-4.88-1.74-5.68-4.15H1.07v2.52C2.72 17.75 6.09 20 10 20z" fill="#34A853"/><path d="M4.32 11.93A6.1 6.1 0 014 10c0-.67.12-1.32.32-1.93V5.55H1.07A10 10 0 000 10c0 1.61.39 3.14 1.07 4.45l3.25-2.52z" fill="#FBBC05"/><path d="M10 3.88c1.88 0 3.13.81 3.85 1.48l2.84-2.76C14.96.99 12.7 0 10 0 6.09 0 2.72 2.25 1.07 5.55l3.25 2.52C5.12 5.62 7.36 3.88 10 3.88z" fill="#EA4335"/></svg>
-                                <span>Google</span>
-                            </button>
-                            <button type="button" class="social-btn" onclick="handleSocial('LinkedIn')">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="#0A66C2"><path d="M19 0H5a5 5 0 00-5 5v14a5 5 0 005 5h14a5 5 0 005-5V5a5 5 0 00-5-5zM8 19H5V8h3v11zM6.5 6.73A1.77 1.77 0 114.73 5 1.76 1.76 0 016.5 6.73zM20 19h-3v-5.6c0-3.37-4-3.12-4 0V19h-3V8h3v1.77C14.4 7.21 20 7 20 12.4V19z"/></svg>
-                                <span>LinkedIn</span>
-                            </button>
-                        </div>
+
+
 
                         <p class="auth-footer-text">Don't have an account? <a href="#" class="auth-link" onclick="switchTab('signup');return false;">Sign up →</a></p>
                         <div class="trust-badges">
@@ -292,19 +194,6 @@ if (isAuthenticated()) {
                             <span class="btn-text">Sign Up &nbsp;→</span>
                             <div class="btn-spinner"></div>
                         </button>
-
-                        <div class="auth-divider"><span>or continue with</span></div>
-                        <div class="social-auth">
-                            <button type="button" class="social-btn social-btn-google" onclick="handleSocial('Google')">
-                                <svg width="17" height="17" viewBox="0 0 20 20"><path d="M19.6 10.23c0-.82-.1-1.42-.25-2.05H10v3.72h5.5c-.15.96-.74 2.31-2.04 3.22v2.45h3.16c1.89-1.73 2.98-4.3 2.98-7.34z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45c-.89.59-2.01.95-3.46.95-2.64 0-4.88-1.74-5.68-4.15H1.07v2.52C2.72 17.75 6.09 20 10 20z" fill="#34A853"/><path d="M4.32 11.93A6.1 6.1 0 014 10c0-.67.12-1.32.32-1.93V5.55H1.07A10 10 0 000 10c0 1.61.39 3.14 1.07 4.45l3.25-2.52z" fill="#FBBC05"/><path d="M10 3.88c1.88 0 3.13.81 3.85 1.48l2.84-2.76C14.96.99 12.7 0 10 0 6.09 0 2.72 2.25 1.07 5.55l3.25 2.52C5.12 5.62 7.36 3.88 10 3.88z" fill="#EA4335"/></svg>
-                                <span>Google</span>
-                            </button>
-                            <button type="button" class="social-btn" onclick="handleSocial('LinkedIn')">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="#0A66C2"><path d="M19 0H5a5 5 0 00-5 5v14a5 5 0 005 5h14a5 5 0 005-5V5a5 5 0 00-5-5zM8 19H5V8h3v11zM6.5 6.73A1.77 1.77 0 114.73 5 1.76 1.76 0 016.5 6.73zM20 19h-3v-5.6c0-3.37-4-3.12-4 0V19h-3V8h3v1.77C14.4 7.21 20 7 20 12.4V19z"/></svg>
-                                <span>LinkedIn</span>
-                            </button>
-                        </div>
-
                         <p class="auth-footer-text">Already have an account? <a href="#" class="auth-link" onclick="switchTab('signin');return false;">Sign in →</a></p>
                         <div class="trust-badges">
                             <div class="trust-badge"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1L2 4v4c0 3.31 2.67 6.41 6 7 3.33-.59 6-3.69 6-7V4L8 1z" fill="currentColor" opacity=".9"/></svg>SSL Encrypted</div>
@@ -313,7 +202,12 @@ if (isAuthenticated()) {
                         </div>
                     </form>
 
-                </div></div></div></div><script>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
     (function () {
         const $ = id => document.getElementById(id);
 
@@ -481,13 +375,6 @@ if (isAuthenticated()) {
                 } else { showAlert(data.message||'Registration failed.','error'); btn.classList.remove('loading'); btn.disabled=false; }
             } catch(err){ showAlert('Network error.','error'); btn.classList.remove('loading'); btn.disabled=false; }
         });
-
-        function animCount(el,target) {
-            if(!el) return;
-            let cur=0; const inc=target/50;
-            const t=setInterval(()=>{ cur+=inc; if(cur>=target){el.textContent=Math.round(target/1000)+'K+';clearInterval(t);}else el.textContent=Math.round(cur/1000)+'K+'; },28);
-        }
-        animCount($('stat-jobs'),50000); animCount($('stat-companies'),10000);
 
         document.body.style.opacity='0';
         setTimeout(()=>{ document.body.style.transition='opacity .4s ease'; document.body.style.opacity='1'; },50);

@@ -1688,3 +1688,45 @@ pub async fn get_chat_messages(
     let messages: Vec<SafeMsgDTO> = m_res.take(0).unwrap_or_default();
     Ok(Json(messages))
 }
+
+pub async fn reject_employee(
+    State(db): State<Surreal<Db>>,
+    Extension(claims): Extension<Claims>,
+    Json(data): Json<RejectEmployeeRequest>,
+) -> Result<Json<String>, StatusCode> {
+    // 1. Get the current user
+    let user = get_user_from_uid(claims.uid, &db).await?;
+    let user_id = user.id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // 2. Validate Company ID
+    let comp_rid = RecordId::from_str(&data.company_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // 3. Ensure the current user is the creator (owner) of the company
+    let mut comp_res = db
+        .query("SELECT * FROM company WHERE id = $id AND created_by = $uid")
+        .bind(("id", comp_rid.clone()))
+        .bind(("uid", user_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let comp: Option<Company> = comp_res.take(0).unwrap_or_default();
+
+    if comp.is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // 4. Validate the target User ID (the person being rejected)
+    let target_user_rid = RecordId::from_str(&data.user_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // 5. Delete the unverified 'works_for' relationship
+    let res = db
+        .query("DELETE works_for WHERE in = $target AND out = $comp")
+        .bind(("target", target_user_rid))
+        .bind(("comp", comp_rid))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    res.check().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json("Employee request rejected and removed successfully".to_string()))
+}

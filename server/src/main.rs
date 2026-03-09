@@ -75,12 +75,11 @@ async fn main() {
         )
         .route("/my-applications", get(get_my_applications))
         .route("/global-search", get(global_search))
-        // --- NEW CHAT ROUTES ---
+        .route("/reject-employee", post(reject_employee))
         .route("/chat/init", post(init_chat_session))
         .route("/chat/sessions", get(get_chat_sessions))
         .route("/chat/message", post(send_message))
         .route("/chat/messages/{session_id}", get(get_chat_messages))
-        // -----------------------
         .route_layer(middleware::from_fn(auth_middleware));
 
     let app = Router::new()

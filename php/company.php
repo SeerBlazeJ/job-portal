@@ -112,34 +112,30 @@ $is_owner = $data["is_owner"] ?? false;
                             <?php endif; ?>
                         </div>
                         <script>
-                                                async function startCompanyChat(targetUid, targetName) {
-                                                    const res = await fetch('chat_api.php?action=init', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ target_uid: targetUid })
-                                                    });
-                                                    const data = await res.json();
-                                                    if(data.success) {
-                                                        window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
-                                                    } else {
-                                                        alert('Could not start chat: ' + data.message);
-                                                    }
-                                                }
-                                                </script>
+                            async function startCompanyChat(targetUid, targetName) {
+                                const res = await fetch('chat_api.php?action=init', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ target_uid: targetUid })
+                                });
+                                const data = await res.json();
+                                if(data.success) {
+                                    window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
+                                } else {
+                                    alert('Could not start chat: ' + data.message);
+                                }
+                            }
+                        </script>
 
-                                                <?php if (
-                                                    isset(
-                                                        $company["created_by"],
-                                                    )
-                                                ): ?>
-                                                    <button onclick="startCompanyChat('<?php echo htmlspecialchars(
-                                                        $company["created_by"],
-                                                    ); ?>', '<?php echo addslashes(
+                        <?php if (isset($company["created_by"])): ?>
+                            <button onclick="startCompanyChat('<?php echo htmlspecialchars(
+                                $company["created_by"],
+                            ); ?>', '<?php echo addslashes(
     htmlspecialchars($company["name"]),
-); ?>')" class="dash-btn dash-btn-glass">
-                                                        💬 Message Employer
-                                                    </button>
-                                                <?php endif; ?>
+); ?>')" class="dash-btn dash-btn-glass" style="margin-top: 0.75rem;">
+                                💬 Message Employer
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -217,13 +213,22 @@ $is_owner = $data["is_owner"] ?? false;
                                 </a>
 
                                 <?php if ($is_owner && !$emp["is_verified"]): ?>
-                                    <button onclick="verifyEmployee('<?php echo htmlspecialchars(
-                                        $company["id"],
-                                    ); ?>', '<?php echo htmlspecialchars(
+                                    <div style="display: flex; gap: 0.5rem; margin-top: auto;">
+                                        <button onclick="verifyEmployee('<?php echo htmlspecialchars(
+                                            $company["id"],
+                                        ); ?>', '<?php echo htmlspecialchars(
     $emp["user"]["id"],
-); ?>')" class="dash-btn dash-btn-glass" style="width: 100%; justify-content: center; color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">
-                                        ✓ Verify Employee
-                                    </button>
+); ?>')" class="dash-btn dash-btn-glass" style="flex: 1; justify-content: center; color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">
+                                            ✓ Verify
+                                        </button>
+                                        <button onclick="rejectEmployee('<?php echo htmlspecialchars(
+                                            $company["id"],
+                                        ); ?>', '<?php echo htmlspecialchars(
+    $emp["user"]["id"],
+); ?>')" class="dash-btn dash-btn-glass" style="flex: 1; justify-content: center; color: var(--rose-400); border-color: rgba(251,113,133,0.3);">
+                                            ✕ Reject
+                                        </button>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -284,6 +289,25 @@ $is_owner = $data["is_owner"] ?? false;
                     window.location.reload();
                 } else {
                     alert('Verification failed.');
+                }
+            } catch(e) {
+                alert('An error occurred.');
+            }
+        }
+
+        async function rejectEmployee(companyId, userId) {
+            if (!confirm("Are you sure you want to reject and remove this request?")) return;
+            try {
+                const res = await fetch('employer_api.php?action=reject_employee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company_id: companyId, user_id: userId })
+                });
+                const result = await res.json();
+                if (result.success || result.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert('Rejection failed.');
                 }
             } catch(e) {
                 alert('An error occurred.');

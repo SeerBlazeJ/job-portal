@@ -613,3 +613,9 @@ pub struct SafeMsgDTO {
     pub file_url: Option<String>,
     pub created_at: Option<String>,
 }
+
+#[derive(Deserialize)]
+pub struct RejectEmployeeRequest {
+    pub company_id: String,
+    pub user_id: String,
+}

@@ -28,6 +28,10 @@ if ($action === "my_jobs") {
 } elseif ($action === "verify_employee") {
     $input = json_decode(file_get_contents("php://input"), true);
     echo json_encode(callRustAPI("/verify-employee", "POST", $input, $token));
+} elseif ($action === "reject_employee") {
+    // <--- NEW ACTION ADDED HERE
+    $input = json_decode(file_get_contents("php://input"), true);
+    echo json_encode(callRustAPI("/reject-employee", "POST", $input, $token));
 } elseif ($action === "update_application_status") {
     $input = json_decode(file_get_contents("php://input"), true);
     echo json_encode(
