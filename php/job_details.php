@@ -105,9 +105,13 @@ function formatExp($months)
      $job["salary_range_end"],
  ); ?></span>
                         <?php endif; ?>
-                        <span class="dash-badge badge-role">🎓 Min. Education: <?php echo htmlspecialchars(
-                            $job["min_ed_lvl"],
-                        ); ?></span>
+                        <?php if (isset($job["salary_range_start"])): ?>
+                            <span class="dash-badge badge-role">💰 $<?php echo number_format(
+                                $job["salary_range_start"],
+                            ); ?> - $<?php echo number_format(
+     $job["salary_range_end"],
+ ); ?></span>
+                        <?php endif; ?>
                     </div>
                 </div>
 

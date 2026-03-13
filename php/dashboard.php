@@ -228,19 +228,41 @@ if ($apiResult["success"]) {
                                 <?php endif; ?>
 
                                 <div class="candidate-footer">
-                                    <span class="candidate-edu">
-                                        <?php if (
-                                            !empty($candidate["education"])
-                                        ): ?>
-                                            🎓 <?php echo count(
-                                                $candidate["education"],
-                                            ) . " qualifications"; ?>
-                                        <?php endif; ?>
-                                    </span>
-                                    <a href="mailto:<?php echo htmlspecialchars(
-                                        $candidate["email"],
-                                    ); ?>" class="dash-btn dash-btn-primary" style="padding: 0.4rem 1rem;">Contact</a>
-                                </div>
+                                                                    <span class="candidate-edu">
+                                                                        <?php if (
+                                                                            !empty(
+                                                                                $candidate[
+                                                                                    "education"
+                                                                                ]
+                                                                            )
+                                                                        ): ?>
+                                                                            🎓 <?php echo count(
+                                                                                $candidate[
+                                                                                    "education"
+                                                                                ],
+                                                                            ) .
+                                                                                " qualifications"; ?>
+                                                                        <?php endif; ?>
+                                                                    </span>
+                                                                    <div style="display: flex; gap: 0.5rem;">
+                                                                        <button onclick="startChat('<?php echo htmlspecialchars(
+                                                                            $candidate[
+                                                                                "id"
+                                                                            ],
+                                                                        ); ?>', '<?php echo addslashes(
+    htmlspecialchars($candidate["name"]),
+); ?>')" class="dash-btn dash-btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                                                            💬 Chat
+                                                                        </button>
+                                                                        <a href="mailto:<?php echo htmlspecialchars(
+                                                                            $candidate[
+                                                                                "email"
+                                                                            ],
+                                                                        ); ?>" class="dash-btn dash-btn-glass" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(99,102,241,0.3);">
+                                                                            ✉️ Email
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
 
                             </div>
                         <?php endforeach; ?>
@@ -250,5 +272,20 @@ if ($apiResult["success"]) {
             <?php endif; ?>
         </main>
     </div>
-</body>
-</html>
+    <script>
+        async function startChat(targetUid, targetName) {
+            const res = await fetch('chat_api.php?action=init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_uid: targetUid })
+            });
+            const data = await res.json();
+            if(data.success) {
+                window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
+            } else {
+                alert('Could not start chat: ' + data.message);
+            }
+        }
+        </script>
+    </body>
+    </html>

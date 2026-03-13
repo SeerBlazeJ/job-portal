@@ -73,65 +73,65 @@ $profile = $apiResult["data"];
 
         <div class="profile-wrapper">
             <div class="details-header" style="align-items: center;">
-                <div style="display: flex; gap: 1.5rem; align-items:center;">
-                    <?php if (!empty($profile["profile_picture"])): ?>
-                        <img src="<?php echo htmlspecialchars(
-                            $profile["profile_picture"],
-                        ); ?>" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--indigo-500); background: rgba(99,102,241,0.1);">
-                    <?php else: ?>
-                        <div style="width: 90px; height: 90px; border-radius: 50%; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">👤</div>
-                    <?php endif; ?>
+                            <div style="display: flex; gap: 1.5rem; align-items:center;">
+                                <?php if (
+                                    !empty($profile["profile_picture"])
+                                ): ?>
+                                    <img src="<?php echo htmlspecialchars(
+                                        $profile["profile_picture"],
+                                    ); ?>" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--indigo-500); background: rgba(99,102,241,0.1);">
+                                <?php else: ?>
+                                    <div style="width: 90px; height: 90px; border-radius: 50%; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">👤</div>
+                                <?php endif; ?>
 
-                    <div>
-                        <h1 class="details-title" style="font-size: 1.8rem; margin-bottom: 0.2rem;"><?php echo htmlspecialchars(
-                            $profile["name"],
-                        ); ?></h1>
-                        <div style="color: var(--text-muted); font-size: 0.95rem; font-weight: 500;">📧 <?php echo htmlspecialchars(
-                            $profile["email"],
-                        ); ?></div>
-                    </div>
-                </div>
-
-                <div class="dash-card">
-                                    <script>
-                                    async function startChat(targetUid, targetName) {
-                                        const res = await fetch('chat_api.php?action=init', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ target_uid: targetUid })
-                                        });
-                                        const data = await res.json();
-                                        if(data.success) {
-                                            window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
-                                        } else {
-                                            alert('Could not start chat: ' + data.message);
-                                        }
-                                    }
-                                    </script>
-
-                                    <button onclick="startChat('<?php echo htmlspecialchars(
-                                        $profile["uid"],
-                                    ); ?>', '<?php echo addslashes(
-    htmlspecialchars($profile["name"]),
-); ?>')" class="dash-btn dash-btn-primary" style="margin-top: 1rem;">
-                                        💬 Message User
-                                    </button>
+                                <div>
+                                    <h1 class="details-title" style="font-size: 1.8rem; margin-bottom: 0.2rem;"><?php echo htmlspecialchars(
+                                        $profile["name"],
+                                    ); ?></h1>
+                                    <div style="color: var(--text-muted); font-size: 0.95rem; font-weight: 500;">📧 <?php echo htmlspecialchars(
+                                        $profile["email"],
+                                    ); ?></div>
                                 </div>
+                            </div>
 
-                <div style="text-align: right; display: flex; flex-direction: column; gap: 0.8rem; align-items: flex-end;">
-                    <?php if ($profile["is_finding_job"]): ?>
-                        <span class="dash-badge badge-role">🔍 Job Seeker</span>
-                    <?php else: ?>
-                        <span class="dash-badge badge-salary" style="color: var(--amber-400); border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.1);">📢 Employer</span>
-                    <?php endif; ?>
+                            <div style="text-align: right; display: flex; flex-direction: column; gap: 0.8rem; align-items: flex-end;">
+                                <?php if ($profile["is_finding_job"]): ?>
+                                    <span class="dash-badge badge-role">🔍 Job Seeker</span>
+                                <?php else: ?>
+                                    <span class="dash-badge badge-salary" style="color: var(--amber-400); border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.1);">📢 Employer</span>
+                                <?php endif; ?>
 
-                    <?php if (!empty($profile["resume"])): ?>
-                        <a href="<?php echo htmlspecialchars(
-                            $profile["resume"],
-                        ); ?>" download class="dash-btn dash-btn-glass" style="color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">📄 View Resume</a>
-                    <?php endif; ?>
-                </div>
-            </div>
+                                <script>
+                                async function startChat(targetUid, targetName) {
+                                    const res = await fetch('chat_api.php?action=init', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ target_uid: targetUid })
+                                    });
+                                    const data = await res.json();
+                                    if(data.success) {
+                                        window.location.href = `chat.php?session=${data.data}&name=${encodeURIComponent(targetName || '')}`;
+                                    } else {
+                                        alert('Could not start chat: ' + data.message);
+                                    }
+                                }
+                                </script>
+
+                                <button onclick="startChat('<?php echo htmlspecialchars(
+                                    $profile["uid"],
+                                ); ?>', '<?php echo addslashes(
+    htmlspecialchars($profile["name"]),
+); ?>')" class="dash-btn dash-btn-primary">
+                                    💬 Message User
+                                </button>
+
+                                <?php if (!empty($profile["resume"])): ?>
+                                    <a href="<?php echo htmlspecialchars(
+                                        $profile["resume"],
+                                    ); ?>" download class="dash-btn dash-btn-glass" style="color: var(--emerald-400); border-color: rgba(16,185,129,0.3);">📄 View Resume</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
 
             <?php if (!empty($profile["working_at"])): ?>
                 <div class="dynamic-list-item" style="border-left-color: var(--emerald-500); background: rgba(16,185,129,0.05); margin-bottom: 2rem;">
